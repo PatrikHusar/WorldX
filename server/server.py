@@ -17,6 +17,7 @@ class Server:
             data = self.getMessage(client, adress)
             if not data:
                 break
+            # message = processData(data, client, adress)
             
 
     def acceptConns(self):
