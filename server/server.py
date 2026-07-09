@@ -1,5 +1,6 @@
 import socket
 import threading
+import dataProcessing
 
 class Server:
     def __init__(self, adress) -> None:
@@ -17,7 +18,7 @@ class Server:
             data = self.getMessage(client, adress)
             if not data:
                 break
-            # message = processData(data, client, adress)
+            message = dataProcessing.processData(data, client, adress)
             
 
     def acceptConns(self):
