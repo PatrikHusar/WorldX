@@ -1,13 +1,16 @@
 import dataSaving
-from serverHTML.server import ServerHTML
+from server.serverHTML.serverForWorldEditing import ServerHTML as ServerHTMLEditing
+from server.serverHTML.server import ServerHTML as ServerHTMLReadOnly
 import blockInfo
 import os
+import serverTCP
 
 class Game:
     def __init__(self, worldSize):
         self.worldFilePath = os.path.join(os.path.dirname(os.path.abspath(__file__)), "world.pkl")
         self.worldSize = worldSize
         self.world = []
+        self.TCPserver = serverTCP.Server(("0.0.0.0", 65432))
         self.saver = dataSaving.DataSaving(self.worldFilePath)
         world = self.saver.loadWorld()
         if world:
@@ -16,15 +19,27 @@ class Game:
             self.createNewWorld()
             self.saver.saveWorld(self.world)
 
-        self.server = ServerHTML(
-            host="0.0.0.0", 
-            port=5000, 
-            getMapPart=self.getMapPart,
-            blockChange=self.changeBlock,
-            worldSize=self.worldSize,
-            blockList=blockInfo.getBlockList()
-        )
-        self.server.startServer()
+        self.initHTMLServer(serverType=True)
+        
+        self.webServer.startServer()
+
+    def initHTMLServer(self, serverType):
+        if serverType == True:
+            self.webServer = ServerHTMLEditing(
+                host="0.0.0.0", 
+                port=5000, 
+                getMapPart=self.getMapPart,
+                blockChange=self.changeBlock,
+                worldSize=self.worldSize,
+                blockList=blockInfo.getBlockList()
+            )
+        else:
+            self.webServer = ServerHTMLReadOnly(
+                host="0.0.0.0",
+                port=5000,
+                getMapPart=self.getMapPart,
+                worldSize=self.worldSize
+            )
 
     def createNewWorld(self):
         self.world = []
@@ -48,4 +63,5 @@ class Game:
             return True
         return False
 
-hra = Game(worldSize=1000)
+if __name__ == "__main__":
+    game = Game(worldSize=1000)
