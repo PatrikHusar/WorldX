@@ -58,11 +58,9 @@ class ServerHTML:
                 .teleport-container button { padding: 6px 12px; font-size: 13px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; margin-left: 5px; font-weight: bold; }
                 .teleport-container button:hover { background: #45a049; }
                 
-                /* Layout pre rozdelenie na mapu a bočný panel */
                 .game-container { display: flex; justify-content: center; align-items: flex-start; gap: 15px; max-width: 1700px; margin: 0 auto; }
-                #gameCanvas { border: 4px solid #555; background: #000; box-shadow: 0px 4px 15px rgba(0,0,0,0.5); cursor: crosshair; }
+                #gameCanvas { border: 4px solid #555; background: #000; box-shadow: 0px 4px 15px rgba(0,0,0,0.5); }
                 
-                /* Bočný panel pre výber blokov */
                 .sidebar { background: #333; border: 4px solid #555; border-radius: 4px; padding: 10px; display: flex; flex-direction: column; gap: 10px; min-width: 100px; max-height: 760px; overflow-y: auto; }
                 .sidebar h3 { margin: 0 0 5px 0; font-size: 14px; color: #aaa; text-transform: uppercase; }
                 .block-btn { display: flex; flex-direction: column; align-items: center; background: #444; border: 2px solid #666; border-radius: 4px; padding: 6px; cursor: pointer; color: white; font-size: 11px; transition: all 0.2s; }
@@ -90,14 +88,28 @@ class ServerHTML:
             </div>
 
             <script>
-                const visibleColumns = 40; const visibleRows = 20; const blockSize = 40; 
+                const canvasWidth = 1600;
+                const canvasHeight = 800;
+
+                const baseBlockSize = 40; 
+                let currentBlockSize = 40; 
+                
                 let cameraR = 0; let cameraC = 0; let maxWorldSize = 1000;
                 let currentMapView = [];
-                let selectedBlockId = 0; // Predvolene vybraný prvý blok
-                let isDrawing = false;   // Sleduje, či držíme stlačenú myš
+                let selectedBlockId = 0; 
+                
+                let isDrawing = false;   
+                let isPanning = false;   
+                let lastMouseX = 0;
+                let lastMouseY = 0;
+
+                let panXAccumulator = 0;
+                let panYAccumulator = 0;
 
                 const canvas = document.getElementById('gameCanvas'); const ctx = canvas.getContext('2d');
-                canvas.width = visibleColumns * blockSize; canvas.height = visibleRows * blockSize;
+                canvas.width = canvasWidth; canvas.height = canvasHeight;
+
+                canvas.addEventListener('contextmenu', e => e.preventDefault());
 
                 const blocksConfig = {{ blocksBackend | tojson }};
                 const totalBlocksCount = blocksConfig.length;
@@ -105,7 +117,6 @@ class ServerHTML:
                 const textures = {};
                 let loadedImagesCount = 0;
 
-                // Generovanie palety tlačidiel v bočnom paneli a načítanie textúr
                 const paletteEl = document.getElementById('palette');
                 blocksConfig.forEach((block, index) => {
                     const img = new Image();
@@ -118,7 +129,6 @@ class ServerHTML:
                     };
                     textures[block.id] = img;
 
-                    // Vytvorenie tlačidla
                     const btn = document.createElement('div');
                     btn.className = `block-btn ${index === 0 ? 'active' : ''}`;
                     btn.dataset.id = block.id;
@@ -132,11 +142,13 @@ class ServerHTML:
                 });
 
                 function loadMapChunk() {
-                    fetch(`/api/mapView?r=${cameraR}&c=${cameraC}&w=${visibleColumns}&h=${visibleRows}`)
+                    const dynamicCols = Math.ceil(canvasWidth / currentBlockSize);
+                    const dynamicRows = Math.ceil(canvasHeight / currentBlockSize);
+
+                    fetch(`/api/mapView?r=${Math.floor(cameraR)}&c=${Math.floor(cameraC)}&w=${dynamicCols}&h=${dynamicRows}`)
                         .then(res => res.json())
                         .then(data => {
                             currentMapView = data.map; maxWorldSize = data.maxSize;
-                            document.getElementById('coordinates').innerText = `x: ${cameraC}, y: ${cameraR}`;
                             renderMap();
                         });
                 }
@@ -144,9 +156,16 @@ class ServerHTML:
                 function renderMap() {
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
                     if (!currentMapView.length) return;
+                    
                     for (let r = 0; r < currentMapView.length; r++) {
                         for (let c = 0; c < currentMapView[r].length; c++) {
-                            ctx.drawImage(textures[currentMapView[r][c]], c * blockSize, r * blockSize, blockSize, blockSize);
+                            ctx.drawImage(
+                                textures[currentMapView[r][c]], 
+                                c * currentBlockSize, 
+                                r * currentBlockSize, 
+                                currentBlockSize, 
+                                currentBlockSize
+                            );
                         }
                     }
                 }
@@ -156,35 +175,84 @@ class ServerHTML:
                 function teleport() {
                     const input = document.getElementById('teleportPosition').value; const parts = input.split(','); if (parts.length !== 2) return;
                     let targetX = parseInt(parts[0].trim()); let targetY = parseInt(parts[1].trim()); if (isNaN(targetX) || isNaN(targetY)) return;
-                    let maxC = maxWorldSize - visibleColumns; let maxR = maxWorldSize - visibleRows;
+                    
+                    const dynamicCols = Math.ceil(canvasWidth / currentBlockSize);
+                    const dynamicRows = Math.ceil(canvasHeight / currentBlockSize);
+                    
+                    let maxC = maxWorldSize - dynamicCols; let maxR = maxWorldSize - dynamicRows;
                     if (targetX < 0) targetX = 0; if (targetX > maxC) targetX = maxC;
                     if (targetY < 0) targetY = 0; if (targetY > maxR) targetY = maxR;
                     cameraC = targetX; cameraR = targetY; loadMapChunk();
                 }
 
+                // ZOOMOVANIE SMEROM KU KURZORU MYŠI
                 canvas.addEventListener('wheel', function(e) {
-                    e.preventDefault(); let direction = e.deltaY > 0 ? 1 : -1;
-                    if (e.shiftKey) {
-                        let newC = cameraC + (direction * 2); if (newC >= 0 && newC <= maxWorldSize - visibleColumns) cameraC = newC;
-                    } else {
-                        let newR = cameraR + (direction * 2); if (newR >= 0 && newR <= maxWorldSize - visibleRows) cameraR = newR;
+                    e.preventDefault();
+                    
+                    const rect = canvas.getBoundingClientRect();
+                    const mouseX = e.clientX - rect.left;
+                    const mouseY = e.clientY - rect.top;
+
+                    // 1. Zistíme presnú pozíciu vo svete pod myšou pred zoomom (vrátane desatinných miest)
+                    const worldXBefore = cameraC + (mouseX / currentBlockSize);
+                    const worldYBefore = cameraR + (mouseY / currentBlockSize);
+
+                    let direction = e.deltaY > 0 ? -1 : 1;
+                    let oldBlockSize = currentBlockSize;
+                    let newBlockSize = currentBlockSize + (direction * 4);
+                    
+                    if (newBlockSize < 10) newBlockSize = 10;
+                    if (newBlockSize > 80) newBlockSize = 80;
+                    
+                    if (oldBlockSize !== newBlockSize) {
+                        currentBlockSize = newBlockSize;
+                        
+                        // 2. Prepočítame kameru tak, aby world pozícia zostala na rovnakom pixeli na obrazovke
+                        let newCameraC = worldXBefore - (mouseX / currentBlockSize);
+                        let newCameraR = worldYBefore - (mouseY / currentBlockSize);
+                        
+                        const dynamicCols = Math.ceil(canvasWidth / currentBlockSize);
+                        const dynamicRows = Math.ceil(canvasHeight / currentBlockSize);
+                        
+                        // 3. Ošetrenie okrajov sveta
+                        if (newCameraC < 0) newCameraC = 0;
+                        if (newCameraC > maxWorldSize - dynamicCols) newCameraC = maxWorldSize - dynamicCols;
+                        if (newCameraR < 0) newCameraR = 0;
+                        if (newCameraR > maxWorldSize - dynamicRows) newCameraR = maxWorldSize - dynamicRows;
+                        
+                        cameraC = newCameraC;
+                        cameraR = newCameraR;
+                        
+                        loadMapChunk();
+                        updateCoordinates(e);
                     }
-                    loadMapChunk();
                 });
 
-                // Spoločná funkcia pre kreslenie (klik aj ťahanie)
+                function updateCoordinates(e) {
+                    const rect = canvas.getBoundingClientRect();
+                    const clickC = Math.floor((e.clientX - rect.left) / currentBlockSize);
+                    const clickR = Math.floor((e.clientY - rect.top) / currentBlockSize);
+                    
+                    let globalX = Math.floor(cameraC) + clickC;
+                    let globalY = Math.floor(cameraR) + clickR;
+                    
+                    if (globalX >= 0 && globalX < maxWorldSize && globalY >= 0 && globalY < maxWorldSize) {
+                        document.getElementById('coordinates').innerText = `x: ${globalX}, y: ${globalY}`;
+                    }
+                }
+
                 function drawBlockAtMouse(e) {
                     const rect = canvas.getBoundingClientRect();
-                    const clickC = Math.floor((e.clientX - rect.left) / blockSize);
-                    const clickR = Math.floor((e.clientY - rect.top) / blockSize);
+                    const clickC = Math.floor((e.clientX - rect.left) / currentBlockSize);
+                    const clickR = Math.floor((e.clientY - rect.top) / currentBlockSize);
                     
                     if (clickR >= 0 && clickR < currentMapView.length && clickC >= 0 && clickC < currentMapView[0].length) {
-                        // Kreslíme iba vtedy, ak je políčko iné ako vybraný blok
                         if (currentMapView[clickR][clickC] !== selectedBlockId) {
-                            let globalX = cameraC + clickC; let globalY = cameraR + clickR;
+                            let globalX = Math.floor(cameraC) + clickC; 
+                            let globalY = Math.floor(cameraR) + clickR;
                             
                             currentMapView[clickR][clickC] = selectedBlockId;
-                            ctx.drawImage(textures[selectedBlockId], clickC * blockSize, clickR * blockSize, blockSize, blockSize);
+                            ctx.drawImage(textures[selectedBlockId], clickC * currentBlockSize, clickR * currentBlockSize, currentBlockSize, currentBlockSize);
                             
                             fetch('/api/blockChange', {
                                 method: 'POST',
@@ -195,22 +263,67 @@ class ServerHTML:
                     }
                 }
 
-                // Event listenery pre Drag-and-Drop kreslenie
                 canvas.addEventListener('mousedown', function(e) {
-                    if (e.button === 0) { // Iba ľavé tlačidlo myši
+                    if (e.button === 0) { 
                         isDrawing = true;
                         drawBlockAtMouse(e);
+                    } else if (e.button === 2) { 
+                        isPanning = true;
+                        lastMouseX = e.clientX;
+                        lastMouseY = e.clientY;
+                        panXAccumulator = 0;
+                        panYAccumulator = 0;
                     }
                 });
 
                 canvas.addEventListener('mousemove', function(e) {
+                    updateCoordinates(e);
+
                     if (isDrawing) {
                         drawBlockAtMouse(e);
+                    } else if (isPanning) {
+                        let deltaX = lastMouseX - e.clientX;
+                        let deltaY = lastMouseY - e.clientY;
+                        
+                        lastMouseX = e.clientX;
+                        lastMouseY = e.clientY;
+
+                        panXAccumulator += deltaX / currentBlockSize;
+                        panYAccumulator += deltaY / currentBlockSize;
+
+                        let cameraChanged = false;
+                        const dynamicCols = Math.ceil(canvasWidth / currentBlockSize);
+                        const dynamicRows = Math.ceil(canvasHeight / currentBlockSize);
+
+                        if (Math.abs(panXAccumulator) >= 0.5) {
+                            let moveC = panXAccumulator > 0 ? Math.ceil(panXAccumulator) : Math.floor(panXAccumulator);
+                            let newC = cameraC + moveC;
+                            if (newC >= 0 && newC <= maxWorldSize - dynamicCols) {
+                                cameraC = newC;
+                                panXAccumulator -= moveC;
+                                cameraChanged = true;
+                            }
+                        }
+
+                        if (Math.abs(panYAccumulator) >= 0.5) {
+                            let moveR = panYAccumulator > 0 ? Math.ceil(panYAccumulator) : Math.floor(panYAccumulator);
+                            let newR = cameraR + moveR;
+                            if (newR >= 0 && newR <= maxWorldSize - dynamicRows) {
+                                cameraR = newR;
+                                panYAccumulator -= moveR;
+                                cameraChanged = true;
+                            }
+                        }
+
+                        if (cameraChanged) {
+                            loadMapChunk();
+                        }
                     }
                 });
 
-                window.addEventListener('mouseup', function() {
-                    isDrawing = false;
+                window.addEventListener('mouseup', function(e) {
+                    if (e.button === 0) isDrawing = false;
+                    if (e.button === 2) isPanning = false;
                 });
             </script>
         </body>
