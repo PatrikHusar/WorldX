@@ -1,6 +1,5 @@
 import dataSaving
-# from serverHTML.serverForWorldEditing import ServerHTML as ServerHTMLEditing
-# from serverHTML.server import ServerHTML as ServerHTMLReadOnly
+# from serverHTML.server import ServerHTML
 import data
 import os
 # import serverTCP
@@ -8,12 +7,15 @@ from mapper import PygameMapper
 import threading
 import entity
 import time
+import random
 
 class Game:
     def __init__(self, worldSize):
         self.worldFilePath = os.path.join(os.path.dirname(os.path.abspath(__file__)), "world.pkl")
         self.worldSize = worldSize
         self.world = []
+        self.entities = []
+        self.zonePositions = {}
         # self.TCPserver = serverTCP.Server(("0.0.0.0", 65432))
         self.saver = dataSaving.DataSaving(self.worldFilePath)
         world = self.saver.loadWorld()
@@ -24,10 +26,32 @@ class Game:
         else:
             self.createNewWorld()
             self.saver.saveWorld(self.world)
+        self.initVars()
+        self.entitySpawn = {
+            'forest': (self.getRandomPos, data.getObjectInfo(4)),
+            'tundra': (self.getRandomPos, data.getObjectInfo(5)),
+            'swamp': (self.getRandomPos, data.getObjectInfo(18)),
+            'desert': (self.getRandomPos, data.getObjectInfo(23)),
+            'volcano': (self.getRandomPos, data.getObjectInfo(24))
+        }
+        self.spawnEntities()
+
         
-        self.entities = []
-        self.entities.append(entity.Entity(75, 60, data.getObjectInfo(4)))
-        self.entities.append(entity.Entity(75, 59, data.getObjectInfo(18)))
+        
+        
+        
+        threading.Thread(target=self.main, daemon=True).start()
+        
+        self.mapper.run()
+        # self.webServer.startServer()
+
+    def initVars(self):
+        # self.webServer = ServerHTML(
+            # host="0.0.0.0",
+            # port=5000,
+            # getMapPart=self.getMapPart,
+            # worldSize=self.worldSize
+        # )
         
         self.mapper = PygameMapper(
         getMapPart=self.getMapPart,
@@ -37,33 +61,19 @@ class Game:
         idToName=data.idToName
         )
         
-        threading.Thread(target=self.main, daemon=True).start()
-        
-        self.mapper.run()
-        
-        
-        
-        # self.initHTMLServer(serverType=0)
-        
-        # self.webServer.startServer()
+        for r in range(self.worldSize):
+            for c in range(self.worldSize):
+                zoneName = self.world[r][c]['zone']
+                if self.world[r][c]['id'] in data.spawnableBlocks:
+                    if zoneName in self.zonePositions:
+                        self.zonePositions[zoneName].append((c, r))
+                    else:
+                        self.zonePositions[zoneName] = [(c, r)]
 
-    # def initHTMLServer(self, serverType):
-    #     if serverType == 0:
-    #         self.webServer = ServerHTMLEditing(
-    #             host="0.0.0.0", 
-    #             port=5000, 
-    #             getMapPart=self.getMapPart,
-    #             blockChange=self.changeBlock,
-    #             worldSize=self.worldSize,
-    #             blockList=blockInfo.getBlockList()
-    #         )
-    #     else:
-    #         self.webServer = ServerHTMLReadOnly(
-    #             host="0.0.0.0",
-    #             port=5000,
-    #             getMapPart=self.getMapPart,
-    #             worldSize=self.worldSize
-    #         )
+    def spawnEntities(self):
+        for zone in data.zones[0:5]:
+            for _ in range(data.maxEnemiesInZone[zone]):
+                self.entities.append(entity.Entity(self.entitySpawn[zone][0](zone), self.entitySpawn[zone][1]))
 
     def main(self):
         deltaTime = 0.01
@@ -108,6 +118,9 @@ class Game:
                 row.append(data.getObjectInfo(0))
             self.world.append(row)
         self.saver.saveWorld(self.world)
+
+    def getRandomPos(self, zone):
+        return random.choice(self.zonePositions[zone])
 
 if __name__ == "__main__":
     game = Game(worldSize=180)
