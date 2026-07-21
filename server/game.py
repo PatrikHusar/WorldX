@@ -1,8 +1,8 @@
 import dataSaving
 from serverHTML.serverHTML import ServerHTML
 import data
-# from player import Player
-# import serverTCP
+from player import Player
+import serverTCP
 # from mapper import PygameMapper
 import threading
 from entity import Entity
@@ -14,7 +14,9 @@ class Game:
         self.world = []
         self.zonePositions = {}
         self.entitiesPos = {}
-        # self.TCPserver = serverTCP.Server(("0.0.0.0", 65432))
+        self.playersPos = {}
+        self.TCPserver = serverTCP.Server(("0.0.0.0", 65432))
+        self.idCounter = 0
         self.saver = dataSaving.DataSaving(data.worldFilePath)
         world = self.saver.loadWorld()
         if world:
@@ -24,7 +26,8 @@ class Game:
             self.createNewWorld()
             self.saver.saveWorld(self.world)
 
-        self.initVars()
+        self.webServer = ServerHTML(host="0.0.0.0", port=5000, game=self)
+        self.initZonePositions()
         self.entitySpawn = {
             'forest': (self.getRandomPos, data.getObjectInfo(4)),
             'tundra': (self.getRandomPos, data.getObjectInfo(5)),
@@ -33,22 +36,12 @@ class Game:
             'volcano': (self.getRandomPos, data.getObjectInfo(24))
         }
         self.spawnEntities()
-        # self.player = Player((50, 75))
+
+        self.player = Player((50, 75), data.getObjectInfo(27), self.idCounter, self, 'patko')
+        self.idCounter += 1
         
         threading.Thread(target=self.main, daemon=True).start()
-        
         self.webServer.startServer()
-
-    def initVars(self):
-        self.webServer = ServerHTML(
-            host="0.0.0.0",
-            port=5000,
-            getMapPart=self.getMapPart,
-            worldSize=data.worldSize,
-            blockList=data.getObjectList('block')
-        )
-        self.initZonePositions()
-
 
     def initZonePositions(self):
         for y in range(data.worldSize):
@@ -61,25 +54,28 @@ class Game:
                         self.zonePositions[zoneName] = [(x, y)]
 
     def spawnEntities(self):
-        id = 0
         for zone in data.zones:
             zoneType = zone['zone']
             for _ in range(data.maxEnemiesInZone[zoneType]):
-                self.entitiesPos[id] = self.entitySpawn[zoneType][0](zoneType)
-                entity = Entity(self.entitiesPos[id], self.entitySpawn[zoneType][1], id, self)
+                self.entitiesPos[self.idCounter] = self.entitySpawn[zoneType][0](zoneType)
+                entity = Entity(self.entitiesPos[self.idCounter], self.entitySpawn[zoneType][1], self.idCounter, self)
                 self.world[int(entity.y)][int(entity.x)]['entities'][entity.entityId] = entity
-                id += 1
+                self.idCounter += 1
 
     def main(self):
         deltaTime = 0.01
-        self.entities = self.getEntitiesList()
+        entities = self.getEntitiesList()
         lastUpdate = 0
         updateInterval = 0.05
         while True:
             currentTime = time.perf_counter()
-            for ent in self.entities:
+            for ent in entities:
                 ent.move(currentTime=currentTime)
-                ent.updatePhysics(deltaTime=deltaTime, currentTime=currentTime)        
+                ent.updatePhysics(deltaTime, currentTime)        
+            players = self.getPlayersList()
+            for player in players:
+                player.doAction(currentTime)
+                player.updatePhysics(deltaTime, currentTime)
             if currentTime - lastUpdate >= updateInterval:
                 self.webServer.updateEntities()
                 lastUpdate = currentTime
@@ -93,10 +89,15 @@ class Game:
     
     def getEntitiesList(self):
         entities = []
-        for id in self.entitiesPos:
+        for id in self.entitiesPos.keys():
             entities.append(self.world[self.entitiesPos[id][1]][self.entitiesPos[id][0]]['entities'][id])
         return entities
-    
+    def getPlayersList(self):
+        players = []
+        for id in self.playersPos.keys():
+            players.append(self.world[self.playersPos[id][1]][self.playersPos[id][0]]['entities'][id])
+        return players
+
     def checkIfInsideWorld(self, startX, startY, width, height):
         if 0 <= startX <= data.worldSize - width and 0 <= startY <= data.worldSize - height:
             return True
@@ -104,6 +105,10 @@ class Game:
 
     def updateEntityMovement(self, oldPos, newPos, id):
         self.world[int(newPos[1])][int(newPos[0])]['entities'][id] = self.world[int(oldPos[1])][int(oldPos[0])]['entities'][id]
+        if type(self.world[int(oldPos[1])][int(oldPos[0])]['entities'][id]) == Entity:
+            self.entitiesPos[id] = (int(newPos[0]), int(newPos[1]))
+        else:
+            self.playersPos[id] = (int(newPos[0]), int(newPos[1]))
         del self.world[int(oldPos[1])][int(oldPos[0])]['entities'][id]
 
     def createNewWorld(self):

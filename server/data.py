@@ -15,6 +15,7 @@ def getObjectList(type):
 
 worldSize = 180
 worldFilePath = os.path.join(os.path.dirname(os.path.abspath(__file__)), "world.pkl")
+playersFilePath = os.path.join(os.path.dirname(os.path.abspath(__file__)), "players.pkl")
 dirs = ['north', 'east', 'south', 'west']
 spawnableBlockIds = [0, 17, 20, 6, 13]
 spawnPos = (50, 75)
@@ -64,14 +65,14 @@ objects = [
     {'type': 'block', 'walkable': True, 'id': 20, 'swimmable': False},
     {'type': 'block', 'walkable': False, 'id': 21, 'swimmable': False},
     {'type': 'block', 'walkable': True, 'id': 22, 'swimmable': False},
+    {'type': 'block', 'walkable': True, 'id': 26, 'swimmable': False},
     {'type': 'enemy', 'id': 4, 'health': 20, 'damage': 0, 'speed': 0.5, 'behavior': 'passive', 'sight': 1, 'pause': 0.25, 'allowedBlocks': [0, 1]},
     {'type': 'enemy', 'id': 5, 'health': 40, 'damage': 25, 'speed': 0.7, 'behavior': 'aggressive', 'sight': 5, 'pause': 0.23, 'allowedBlocks': [20, 22]},
     {'type': 'enemy', 'id': 18, 'health': 80, 'damage': 60, 'speed': 0.8, 'behavior': 'aggressive', 'sight': 7, 'pause': 0.2, 'allowedBlocks': [17, 19]},
     {'type': 'enemy', 'id': 23, 'health': 60, 'damage': 40, 'speed': 0.6, 'behavior': 'aggressive', 'sight': 5, 'pause': 0.23, 'allowedBlocks': [6]},
     {'type': 'enemy', 'id': 24, 'health': 200, 'damage': 100, 'speed': 1, 'behavior': 'aggressive', 'sight': 9, 'pause': 0.18, 'allowedBlocks': [13, 3]},
     {'type': 'grave', 'id': 25, 'health': 1, 'inventory': []},
-    {'type': 'block', 'id': 26, 'walkable': True, 'swimmable': False},
-    {'type': 'player', 'id': 27, 'health': 100, 'damage': 15, 'speed': 1, 'sight': 5, 'pause': 0.18, 'allowedBlocks': [0, 6, 20, 17, 13, 1, 3, 9, 19, 22], 'swimmingSkill': 0, 'inventory': [], 'equiped': {'hand': None, 'chest': None, 'head': None, 'feet': None}}
+    {'type': 'player', 'id': 27, 'health': 100, 'damage': 15, 'speed': 1, 'sight': 5, 'pause': 0.18, 'allowedBlocks': [0, 6, 20, 17, 13, 1, 3, 9, 19, 22], 'swimmingSkill': 0, 'inventory': [], 'graves': {}, 'equipped': {'hand': None, 'back': None, 'head': None, 'feet': None}, 'chestInventory': []}
 ]
 
 zones = [

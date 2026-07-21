@@ -1,27 +1,28 @@
 import os
+import time
 from flask import Flask, jsonify, request, render_template_string
+import data
 
 class ServerHTML:
-    def __init__(self, host, port, getMapPart, worldSize, blockList):
+    def __init__(self, host, port, game):
         imagesPath = os.path.join(os.path.dirname(__file__), 'static')
         
         self.app = Flask(__name__, static_folder=imagesPath, static_url_path='/static')
         self.host = host
         self.port = port
+        self.game = game
         
-        self.getMapPart = getMapPart
-        self.worldSize = worldSize
-        self.blockList = blockList
+        self.worldSize = data.worldSize
+        self.blockList = data.getObjectList('block')
         
         self.pending_requests = []
 
         self.app.add_url_rule("/", "index", self.website)
-        self.app.add_url_rule("/api/mapView", "mapView", self.getMapViewJson)
+        self.app.add_url_rule("/api/fullMap", "fullMap", self.getFullMapJson)
         self.app.add_url_rule("/api/entities", "entities", self.getEntitiesJson)
         self.app.add_url_rule("/api/pollEntities", "pollEntities", self.pollEntities)
 
     def updateEntities(self):
-        """Zavolaj z hry pre okamžitý update pozícií entít."""
         responses = list(self.pending_requests)
         self.pending_requests.clear()
         for resp_fn in responses:
@@ -45,16 +46,10 @@ class ServerHTML:
             
         return jsonify({"status": "ok"})
 
-    def getMapViewJson(self):
-        """Endpoint pre bloky terénu."""
-        startY = int(request.args.get("r", 0))
-        startX = int(request.args.get("c", 0))
-        width = int(request.args.get("w", 40))
-        height = int(request.args.get("h", 20))
+    def getFullMapJson(self):
+        mapViewJs = self.game.getMapPart(0, 0, self.worldSize, self.worldSize)
 
-        mapViewJs = self.getMapPart(startX, startY, width, height)
-
-        webMap = []
+        fullMap = []
         for r in range(len(mapViewJs)):
             webRow = []
             for c in range(len(mapViewJs[r])):
@@ -69,68 +64,67 @@ class ServerHTML:
                         "g": groundId, 
                         "zone": cell.get("zone", "unknown")
                     })
-            webMap.append(webRow)
+            fullMap.append(webRow)
 
         return jsonify({
-            "map": webMap,
-            "startX": startX,
-            "startY": startY,
+            "map": fullMap,
             "maxSize": self.worldSize
         })
-
+        
     def getEntitiesJson(self):
-        """Endpoint pre dynamické entity."""
-        startY = int(request.args.get("r", 0))
-        startX = int(request.args.get("c", 0))
-        width = int(request.args.get("w", 40))
-        height = int(request.args.get("h", 20))
-
-        mapViewJs = self.getMapPart(startX, startY, width, height)
-
         entitiesList = []
-        for r in range(len(mapViewJs)):
-            for c in range(len(mapViewJs[r])):
-                cell = mapViewJs[r][c]
-                if cell and cell.get('entities'):
-                    entities = cell['entities']
-                    if isinstance(entities, dict):
-                        for instanceId, entityObj in entities.items():
-                            if entityObj:
-                                drawId = None
-                                eType = "Unknown"
-                                eHp = "N/A"
-                                eDir = "north"
-                                eX = startX + c
-                                eY = startY + r
-                                
-                                if isinstance(entityObj, dict):
-                                    drawId = entityObj.get("entity", {}).get("id") if isinstance(entityObj.get("entity"), dict) else entityObj.get("id")
-                                    eType = entityObj.get("entity", {}).get("name", "Unknown") if isinstance(entityObj.get("entity"), dict) else entityObj.get("type", "Unknown")
-                                    eHp = entityObj.get("hp", "N/A")
-                                    eDir = entityObj.get("dir", "north")
-                                    eX = entityObj.get("x", eX)
-                                    eY = entityObj.get("y", eY)
-                                else:
-                                    if hasattr(entityObj, "entity") and isinstance(entityObj.entity, dict):
-                                        drawId = entityObj.entity.get("id")
-                                        eType = entityObj.entity.get("name", "Unknown")
-                                    else:
-                                        drawId = getattr(entityObj, "entityId", None)
-                                    eHp = getattr(entityObj, "hp", "N/A")
-                                    eDir = getattr(entityObj, "dir", "north")
-                                    eX = getattr(entityObj, "x", eX)
-                                    eY = getattr(entityObj, "y", eY)
-                                
-                                if drawId is not None:
-                                    entitiesList.append({
-                                        "id": drawId,
-                                        "asset": f"{drawId}{eDir}",
-                                        "type": eType,
-                                        "hp": eHp,
-                                        "x": float(eX),
-                                        "y": float(eY),
-                                        "zone": cell.get("zone", "unknown")
-                                    })
+        
+        raw_players = list(self.game.getPlayersList()) if hasattr(self.game, 'getPlayersList') else []
+        raw_entities = list(self.game.getEntitiesList()) if hasattr(self.game, 'getEntitiesList') else []
+        
+        for entityObj in raw_players + raw_entities:
+            try:
+                class_name = entityObj.__class__.__name__
+                unique_id = getattr(entityObj, 'unique_id', getattr(entityObj, 'id', 0))
+                
+                type_id = unique_id
+                if hasattr(entityObj, 'entity') and isinstance(entityObj.entity, dict):
+                    type_id = entityObj.entity.get('id', type_id)
+                elif hasattr(entityObj, 'id'):
+                    type_id = entityObj.id
+                
+                if class_name == "Player" or entityObj in raw_players:
+                    entity_type = "player"
+                    eSight = int(getattr(entityObj, 'sight', 5))
+                    type_id = 27 
+                else:
+                    entity_type = "entity"
+                    eSight = getattr(entityObj, 'sight', 3)
+                
+                # Ak hra dynamicky mení smer alebo pridáva stav animácie, zoberieme presne to, čo posiela objekt
+                eDir = getattr(entityObj, 'dir', 'south')
+                eX = int(getattr(entityObj, 'x', 0))
+                eY = int(getattr(entityObj, 'y', 0))
+                
+                if hasattr(entityObj, 'entity') and isinstance(entityObj.entity, dict):
+                    eHp = entityObj.entity.get('hp', 100)
+                else:
+                    eHp = getattr(entityObj, 'hp', 100)
+
+                # Ak váš systém animácií priamo generuje iný názov assetu (napr. číslo snímku), 
+                # skontrolujte, či sa to nevolá inak. Štandardne držíme formát id + smer.
+                asset_name = f"{type_id}{eDir}"
+                
+                # AK MÁTE ANIMÁCIE RIEŠENÉ CEZ ATRIBÚT (napr. entityObj.current_frame), upovedomte ma, 
+                # upravili by sme riadok vyššie.
+                
+                entitiesList.append({
+                    "id": unique_id,
+                    "asset": asset_name,
+                    "type": entity_type,         
+                    "hp": eHp,
+                    "x": float(eX),
+                    "y": float(eY),
+                    "sight": int(eSight)
+                })
+            except Exception:
+                continue
+            
         return jsonify(entitiesList)
 
     def website(self):
@@ -209,20 +203,17 @@ class ServerHTML:
                 let cameraR = 64.0; 
                 let maxWorldSize = 180;
                 
-                const terrainCache = {};
+                let fullWorldMap = []; 
                 let currentEntities = [];
                 
-                let mapStartX = 0;
-                let mapStartY = 0;
-                let mapWidth = 0;
-                let mapHeight = 0;
+                const discoveredTiles = {}; 
                 
                 let selectedEntity = null;
                 
                 let isDragging = false;
                 let startX, startY;
                 let startCameraC, startCameraR;
-                let totalDragDistance = 0; // Sleduje, či sme s myšou pohli, alebo len klikli
+                let totalDragDistance = 0;
 
                 canvas.width = visibleColumns * baseBlockSize; 
                 canvas.height = visibleRows * baseBlockSize;
@@ -231,7 +222,7 @@ class ServerHTML:
                 const textures = {};
                 let loadedImagesCount = 0;
 
-                const assetsToLoad = [];
+                const assetsToLoad = ["26"]; 
                 blocksConfig.forEach(block => {
                     assetsToLoad.push(String(block.id));       
                     assetsToLoad.push(block.id + "north");    
@@ -248,89 +239,76 @@ class ServerHTML:
                     img.onload = function() {
                         loadedImagesCount++;
                         if (loadedImagesCount === totalAssetsCount) {
-                            loadMapChunk();
-                            startPollingLoop();
+                            loadEntireWorld();
                         }
                     };
                     img.onerror = function() {
                         loadedImagesCount++;
                         if (loadedImagesCount === totalAssetsCount) {
-                            loadMapChunk();
-                            startPollingLoop();
+                            loadEntireWorld();
                         }
                     };
                     textures[assetName] = img;
                 });
 
+                // Zabezpečíme okamžitú registráciu chýbajúcej textúry bez lagov
                 function loadAndRegisterAsset(assetName) {
                     if (textures[assetName]) return;
+                    
+                    // Dočasne vložíme placeholder, aby sme nespúšťali sťahovanie 100x pre ten istý asset
+                    textures[assetName] = "loading"; 
+                    
                     const img = new Image();
                     img.src = `/static/${assetName}.png`;
-                    img.onload = () => { textures[assetName] = img; requestAnimationFrame(renderMap); };
-                    img.onerror = () => { textures[assetName] = null; };
-                    textures[assetName] = img;
+                    img.onload = () => { 
+                        textures[assetName] = img; 
+                    };
+                    img.onerror = () => { 
+                        textures[assetName] = null; 
+                    };
                 }
 
-                function loadMapChunk() {
-                    const colsToFetch = Math.ceil(visibleColumns / zoomLevel);
-                    const rowsToFetch = Math.ceil(visibleRows / zoomLevel);
-                    
-                    const buffer = 5;
-                    const fetchX = Math.max(0, Math.floor(cameraC) - buffer);
-                    const fetchY = Math.max(0, Math.floor(cameraR) - buffer);
-                    mapWidth = colsToFetch + (buffer * 2);
-                    mapHeight = rowsToFetch + (buffer * 2);
-                    
-                    mapStartX = fetchX;
-                    mapStartY = fetchY;
-
-                    let missingBlocks = false;
-                    for (let r = 0; r < mapHeight; r++) {
-                        for (let c = 0; c < mapWidth; c++) {
-                            const wx = mapStartX + c;
-                            const wy = mapStartY + r;
-                            if (wx >= 0 && wx < maxWorldSize && wy >= 0 && wy < maxWorldSize) {
-                                if (terrainCache[`${wx},${wy}`] === undefined) {
-                                    missingBlocks = true;
-                                    break;
-                                }
-                            }
-                        }
-                        if (missingBlocks) break;
-                    }
-
-                    if (missingBlocks) {
-                        fetch(`/api/mapView?r=${mapStartY}&c=${mapStartX}&w=${mapWidth}&h=${mapHeight}`)
-                            .then(res => res.json())
-                            .then(data => {
-                                for (let r = 0; r < data.map.length; r++) {
-                                    for (let c = 0; c < data.map[r].length; c++) {
-                                        const wx = data.startX + c;
-                                        const wy = data.startY + r;
-                                        terrainCache[`${wx},${wy}`] = data.map[r][c];
-                                    }
-                                }
-                                loadEntitiesOnly();
-                            });
-                    } else {
-                        loadEntitiesOnly();
-                    }
+                function loadEntireWorld() {
+                    fetch('/api/fullMap')
+                        .then(res => res.json())
+                        .then(data => {
+                            fullWorldMap = data.map;
+                            maxWorldSize = data.maxSize;
+                            loadEntitiesOnly();
+                            
+                            startRenderLoop();
+                            startPollingLoop();
+                        });
                 }
 
                 function loadEntitiesOnly() {
-                    if (mapWidth === 0 || mapHeight === 0) return;
-                    
-                    fetch(`/api/entities?r=${mapStartY}&c=${mapStartX}&w=${mapWidth}&h=${mapHeight}`)
+                    fetch('/api/entities')
                         .then(res => res.json())
                         .then(entities => {
                             currentEntities = entities;
                             
+                            const player = currentEntities.find(ent => ent.type === "player");
+                            if (player) {
+                                const pX = Math.floor(player.x);
+                                const pY = Math.floor(player.y);
+                                const pSight = player.sight || 5;
+                                const now = Date.now();
+
+                                for (let dy = -pSight; dy <= pSight; dy++) {
+                                    for (let dx = -pSight; dx <= pSight; dx++) {
+                                        discoveredTiles[`${pX + dx},${pY + dy}`] = now;
+                                    }
+                                }
+                            }
+
+                            // Okamžitá kontrola a dočítanie chýbajúcich stavov animácií
                             currentEntities.forEach(ent => {
-                                loadAndRegisterAsset(ent.asset);
+                                if (!textures[ent.asset]) {
+                                    loadAndRegisterAsset(ent.asset);
+                                }
                             });
                             
                             updateInfoPanel();
-                            requestAnimationFrame(renderMap);
                         });
                 }
 
@@ -338,7 +316,6 @@ class ServerHTML:
                     fetch('/api/pollEntities')
                         .then(res => res.json())
                         .then(() => {
-                            // ODSTRÁNENÁ podmienka !isDragging -> entity sa updatujú neustále
                             loadEntitiesOnly();
                             startPollingLoop();
                         })
@@ -347,9 +324,13 @@ class ServerHTML:
                         });
                 }
 
+                function startRenderLoop() {
+                    renderMap();
+                    requestAnimationFrame(startRenderLoop);
+                }
+
                 function renderMap() {
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    
                     const drawSize = baseBlockSize * zoomLevel;
 
                     const colsToDraw = Math.ceil(canvas.width / drawSize) + 2;
@@ -358,82 +339,59 @@ class ServerHTML:
                     const startDrawX = Math.floor(cameraC);
                     const startDrawY = Math.floor(cameraR);
 
+                    const player = currentEntities.find(ent => ent.type === "player");
+                    const pX = player ? Math.floor(player.x) : 0;
+                    const pY = player ? Math.floor(player.y) : 0;
+                    const pSight = player ? player.sight : 5;
+                    const now = Date.now();
+
                     for (let r = -1; r < rowsToDraw; r++) {
                         for (let c = -1; c < colsToDraw; c++) {
                             const wx = startDrawX + c;
                             const wy = startDrawY + r;
                             
-                            if (wx < 0 || wx >= maxWorldSize || wy < 0 || wy >= maxWorldSize) {
-                                continue;
-                            }
+                            if (wx < 0 || wx >= maxWorldSize || wy < 0 || wy >= maxWorldSize) continue;
                             
                             const posX = (wx - cameraC) * drawSize;
                             const posY = (wy - cameraR) * drawSize;
 
-                            // 1. KONTROLA, ČI POLÍČKO VIDÍ NEJAKÝ HRÁČ
-                            let isVisible = false;
+                            const inPlayerSight = (Math.abs(wx - pX) <= pSight && Math.abs(wy - pY) <= pSight);
+                            const lastSeenTime = discoveredTiles[`${wx},${wy}`] || 0;
+                            const isWithinMinute = (now - lastSeenTime <= 60000);
 
-                            for (let i = 0; i < currentEntities.length; i++) {
-                                const ent = currentEntities[i];
-                                
-                                // Hmlu odkrýva LEN entita, ktorej typ je 'player' (prípadne 'Player')
-                                if (ent.type && ent.type.toLowerCase() === 'player') {
-                                    const sight = ent.sight || 5; // Ak hráč nemá sight z backendu, nastavíme mu napr. 5
-
-                                    if (Math.abs(ent.x - wx) <= sight && Math.abs(ent.y - wy) <= sight) {
-                                        isVisible = true;
-                                        break; // Našli sme hráča, čo sem vidí, netreba hľadať ďalej
+                            if (inPlayerSight || isWithinMinute) {
+                                if (fullWorldMap[wy] && fullWorldMap[wy][wx]) {
+                                    const cell = fullWorldMap[wy][wx];
+                                    if (cell.g !== null && textures[cell.g] && textures[cell.g] !== "loading") {
+                                        ctx.drawImage(textures[cell.g], posX, posY, drawSize, drawSize);
                                     }
                                 }
-                            }
-
-                            // 2. VYKRESLENIE TERÉNU ALEBO OBLAKU
-                            if (isVisible) {
-                                const cell = terrainCache[`${wx},${wy}`];
-                                if (cell && cell.g !== null && textures[cell.g]) {
-                                    ctx.drawImage(textures[cell.g], posX, posY, drawSize, drawSize);
-                                }
                             } else {
-                                // Políčko je v tme -> oblak
-                                if (textures["26"]) {
+                                if (textures["26"] && textures["26"] !== "loading") {
                                     ctx.drawImage(textures["26"], posX, posY, drawSize, drawSize);
                                 } else {
-                                    ctx.fillStyle = "#444";
+                                    ctx.fillStyle = "#111"; 
                                     ctx.fillRect(posX, posY, drawSize, drawSize);
                                 }
                             }
                         }
                     }
 
-                    // 3. VYKRESLENIE ENTÍT (Zobrazia sa len tie, ktoré sú odkrívené svetlom hráča)
                     currentEntities.forEach(ent => {
                         const posX = (ent.x - cameraC) * drawSize;
                         const posY = (ent.y - cameraR) * drawSize;
 
-                        if (posX + drawSize < 0 || posY + drawSize < 0 || posX > canvas.width || posY > canvas.height) {
-                            return;
-                        }
+                        if (posX + drawSize < 0 || posY + drawSize < 0 || posX > canvas.width || posY > canvas.height) return;
 
-                        // AK CHCEŠ, ABY POTVORY V OBLAKOCH BOLI SKRYTÉ:
-                        // Skontrolujeme, či pozícia potvory leží vo viditeľnej zóne nejakého hráča
-                        let entVisible = (ent.type && ent.type.toLowerCase() === 'player'); // Hráč vidí sám seba vždy
-                        
-                        if (!entVisible) {
-                            for (let i = 0; i < currentEntities.length; i++) {
-                                const p = currentEntities[i];
-                                if (p.type && p.type.toLowerCase() === 'player') {
-                                    const pSight = p.sight || 5;
-                                    if (Math.abs(p.x - ent.x) <= pSight && Math.abs(p.y - ent.y) <= pSight) {
-                                        entVisible = true;
-                                        break;
-                                    }
-                                }
+                        const entX = Math.floor(ent.x);
+                        const entY = Math.floor(ent.y);
+                        const inSight = (Math.abs(entX - pX) <= pSight && Math.abs(entY - pY) <= pSight);
+                        const seenRecent = (now - (discoveredTiles[`${entX},${entY}`] || 0) <= 60000);
+
+                        if (inSight || seenRecent || ent.type === "player") {
+                            if (textures[ent.asset] && textures[ent.asset] !== "loading") {
+                                ctx.drawImage(textures[ent.asset], posX, posY, drawSize, drawSize);
                             }
-                        }
-
-                        // Vykreslíme entitu iba ak je viditeľná (alebo ak chceš vidieť potvory aj v hmle, podmienku 'if (entVisible)' vymaž)
-                        if (entVisible && textures[ent.asset]) {
-                            ctx.drawImage(textures[ent.asset], posX, posY, drawSize, drawSize);
                         }
                     });
                 }
@@ -442,7 +400,6 @@ class ServerHTML:
                     const rect = canvas.getBoundingClientRect();
                     const mouseX = e.clientX - rect.left;
                     const mouseY = e.clientY - rect.top;
-                    
                     const drawSize = baseBlockSize * zoomLevel;
                     
                     const worldX = Math.floor(cameraC + (mouseX / drawSize));
@@ -450,12 +407,20 @@ class ServerHTML:
                     
                     if (worldX >= 0 && worldX < maxWorldSize && worldY >= 0 && worldY < maxWorldSize) {
                         document.getElementById('coordinates').innerText = `x: ${worldX}, y: ${worldY}`;
+                        
+                        if (selectedEntity !== null) {
+                            const ent = currentEntities.find(e => e.id === selectedEntity);
+                            if (ent && Math.floor(ent.x) === worldX && Math.floor(ent.y) === worldY) {
+                                if (fullWorldMap[worldY] && fullWorldMap[worldY][worldX]) {
+                                    document.getElementById('infoZone').innerText = fullWorldMap[worldY][worldX].zone.toUpperCase();
+                                }
+                            }
+                        }
                     }
                 });
 
-                // ZMENA NA ĽAVÉ TLAČIDLO (mousedown)
                 canvas.addEventListener('mousedown', function(e) {
-                    if (e.button === 0) { // 0 = Ľavé tlačidlo
+                    if (e.button === 0) { 
                         isDragging = true;
                         startX = e.clientX;
                         startY = e.clientY;
@@ -482,28 +447,19 @@ class ServerHTML:
                     
                     cameraC = Math.max(0, Math.min(newC, maxC));
                     cameraR = Math.max(0, Math.min(newR, maxR));
-                    
-                    requestAnimationFrame(renderMap);
                 });
 
-                // ZMENA NA ĽAVÉ TLAČIDLO (mouseup)
                 window.addEventListener('mouseup', function(e) {
                     if (e.button === 0 && isDragging) {
                         isDragging = false;
-                        
-                        // Ak sme myšou takmer nepohli, berieme to ako obyčajné kliknutie (výber entity)
                         if (totalDragDistance < 5) {
                             handleCanvasClick(e);
-                        } else {
-                            // Ak sme mapu reálne ťahali, len načítame nové chunk bloky na pozadí
-                            loadMapChunk();
                         }
                     }
                 });
 
                 canvas.addEventListener('wheel', function(e) {
                     e.preventDefault();
-                    
                     const previousZoom = zoomLevel;
                     const zoomFactor = 1.15;
                     
@@ -513,9 +469,7 @@ class ServerHTML:
                         zoomLevel = Math.max(minZoom, zoomLevel / zoomFactor);
                     }
                     
-                    if (zoomLevel === previousZoom) {
-                        return;
-                    }
+                    if (zoomLevel === previousZoom) return;
                     
                     const rect = canvas.getBoundingClientRect();
                     const mouseX = e.clientX - rect.left;
@@ -529,15 +483,12 @@ class ServerHTML:
                     
                     cameraC = Math.max(0, Math.min(gridXBefore - (mouseX / (baseBlockSize * zoomLevel)), maxC));
                     cameraR = Math.max(0, Math.min(gridYBefore - (mouseY / (baseBlockSize * zoomLevel)), maxR));
-
-                    loadMapChunk(); 
                 });
 
                 function handleCanvasClick(e) {
                     const rect = canvas.getBoundingClientRect();
                     const clickX = e.clientX - rect.left;
                     const clickY = e.clientY - rect.top;
-                    
                     const drawSize = baseBlockSize * zoomLevel;
                     const clickWorldX = cameraC + (clickX / drawSize);
                     const clickWorldY = cameraR + (clickY / drawSize);
@@ -559,7 +510,15 @@ class ServerHTML:
                 function showEntityDetails(ent) {
                     const infoPanel = document.getElementById('infoPanel');
                     document.getElementById('infoPos').innerText = `x: ${ent.x.toFixed(2)}, y: ${ent.y.toFixed(2)}`;
-                    document.getElementById('infoZone').innerText = ent.zone.toUpperCase();
+                    
+                    const ex = Math.floor(ent.x);
+                    const ey = Math.floor(ent.y);
+                    let zoneName = "UNKNOWN";
+                    if (fullWorldMap[ey] && fullWorldMap[ey][ex]) {
+                        zoneName = fullWorldMap[ey][ex].zone || "UNKNOWN";
+                    }
+                    
+                    document.getElementById('infoZone').innerText = zoneName.toUpperCase();
                     document.getElementById('infoType').innerText = `ID: ${ent.id} (${ent.type})`;
                     document.getElementById('infoHp').innerText = ent.hp;
                     infoPanel.classList.remove('hidden');
@@ -567,7 +526,6 @@ class ServerHTML:
 
                 function updateInfoPanel() {
                     if (selectedEntity === null) return;
-                    
                     const ent = currentEntities.find(e => e.id === selectedEntity);
                     if (ent) {
                         showEntityDetails(ent);
@@ -593,7 +551,6 @@ class ServerHTML:
                     
                     cameraC = Math.max(0, Math.min(targetX, maxC)); 
                     cameraR = Math.max(0, Math.min(targetY, maxR)); 
-                    loadMapChunk();
                 }
             </script>
         </body>

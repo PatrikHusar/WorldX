@@ -54,12 +54,12 @@ class Entity:
     def availableDirs(self, mapPart):
         mid = int(len(mapPart) / 2)
         possibleDirs = []
-        directions = {}
-        for dir in data.dirs:
-            directions[dir] = (mid + self.offsets[dir][0], mid + self.offsets[dir][1])
-        for dir in directions.keys():
-            if self.canWalkOn(mapPart[directions[dir][1]][directions[dir][0]]):
-                possibleDirs.append(dir)
+        
+        for d in data.dirs:
+            targetX = mid + self.offsets[d][0]
+            targetY = mid + self.offsets[d][1]
+            if self.canWalkOn(mapPart[targetY][targetX]):
+                possibleDirs.append(d)
         return possibleDirs
 
     def passive(self):
@@ -109,15 +109,14 @@ class Entity:
         
         queue = [(startR, startC, [])]
         visited = {(startR, startC)}
-        directions = {'north': (-1, 0), 'south': (1, 0), 'east': (0, 1), 'west': (0, -1)}
         
         while queue:
             r, c, path = queue.pop(0)
             if r == targetR and c == targetC:
                 return path[0] if path else None
                 
-            for direction, (dr, dc) in directions.items():
-                nr, nc = r + dr, c + dc
+            for direction, (dx, dy) in self.offsets.items():
+                nr, nc = r + dy, c + dx
                 if 0 <= nr < width and 0 <= nc < width and (nr, nc) not in visited:
                     if (nr == targetR and nc == targetC) or self.canWalkOn(mapPart[nr][nc]):
                         visited.add((nr, nc))
@@ -126,10 +125,8 @@ class Entity:
 
     def executeStep(self, moveChoice):
         newX, newY = self.x, self.y
-        for offset in self.offsets:
-            if moveChoice == offset:
-                newX += self.offsets[offset][0]
-                newY += self.offsets[offset][1]     
+        newX += self.offsets[moveChoice][0]
+        newY += self.offsets[moveChoice][1]     
         self.moveTargetX = float(newX)
         self.moveTargetY = float(newY)
         self.dir = moveChoice
