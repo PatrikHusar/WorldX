@@ -25,4 +25,4 @@ def turn_right():
 def turn_towards(dir):
     client.sendMessage(f'turnTo:{dir}')
 def login(password):
-    client.sendMessage(f'loginPassword{password}')
+    client.sendMessage(f'login:{password}')

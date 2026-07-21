@@ -1,10 +1,10 @@
 import socket
 import threading
-import dataProcessing
 
 class Server:
-    def __init__(self, adress) -> None:
+    def __init__(self, adress, processClientData) -> None:
         self.adress = adress
+        self.processClientData = processClientData
         self.clients = []
         self.adresses = []
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -13,7 +13,7 @@ class Server:
         self.server.listen()
         print(f"Server running on: {self.adress[0]}:{self.adress[1]}")
         threading.Thread(target=self.acceptConns, daemon=True).start()
-    
+
     def __del__(self):
         for client in self.clients:
             try:
@@ -27,8 +27,9 @@ class Server:
             data = self.getMessage(client, adress)
             if not data:
                 break
-            message = dataProcessing.processData(data, client, adress)
-            
+            message = self.processClientData(data)
+            self.sendMessage(client, message)
+
     def acceptConns(self):
         while True:
             client, adress = self.server.accept()

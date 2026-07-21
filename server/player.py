@@ -1,7 +1,7 @@
 import data
 
 class Player:
-    def __init__(self, pos, player, id, game, name):
+    def __init__(self, pos, player, id, game, password):
         self.x = int(pos[0])
         self.y = int(pos[1])
         self.dir = 'north'
@@ -9,7 +9,7 @@ class Player:
         self.isMoving = False
         self.player = player
         self.game = game
-        self.name = name
+        self.password = password
         self.offsets = {'north': (0, -1), 'east': (1, 0), 'south': (0, 1), 'west': (-1, 0)}
         self.moveTargetX = float(self.x)
         self.moveTargetY = float(self.y)
@@ -21,17 +21,18 @@ class Player:
 
     def equipItem(self, item, place):
         pass
-    def storeItem(item):
+    def storeItem(self, item):
         pass
-    def takeItem(item):
+    def takeItem(self, item):
         pass
-    def restorePlayer(self, chestInventory, inventory, graves, name):
-        self.chestInventory = chestInventory
-        self.inventory = inventory
+    def restorePlayer(self, chestInventory, inventory, graves, password):
+        self.player['chestInventory'] = chestInventory
         self.player['inventory'] = inventory
         self.player['graves'] = graves
-        self.name = name
-    def turnTowards(self, dir):
+        self.password = password
+    def turnTowards(self, currentTime, dir):
+        if currentTime - self.time < self.player['pause'] or self.isMoving == True:
+            return
         self.dir = dir
     def canWalkOn(self, object):
         if object['block']['id'] in self.player['allowedBlocks']:
