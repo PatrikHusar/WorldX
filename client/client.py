@@ -5,14 +5,24 @@ class Client:
         self.__adress = adress
         self.__client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.__client.connect(self.__adress)
-        self.__closeConnection()
-    
+
     def sendMessage(self, message):
         self.__client.sendall(message.encode("utf-8"))
         response = self.__client.recv(1024).decode("utf-8")
         return response
     
-    def __closeConnection(self):
+    def closeConnection(self):
         self.__client.close()
 
 client = Client(("127.0.0.1", 65432))
+
+def forward():
+    client.sendMessage('forward')
+def turn_left():
+    client.sendMessage('left')
+def turn_right():
+    client.sendMessage('right')
+def turn_towards(dir):
+    client.sendMessage(f'turnTo:{dir}')
+def login(password):
+    client.sendMessage(f'loginPassword{password}')
