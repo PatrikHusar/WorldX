@@ -90,7 +90,7 @@ class Game:
             currentTime = time.perf_counter()
             for ent in entities:
                 ent.move(currentTime=currentTime)
-                ent.updatePhysics(deltaTime, currentTime)        
+                ent.updatePhysics(deltaTime, currentTime)
             players = self.getPlayersList()
             for player in players:
                 player.doAction(currentTime)
@@ -150,7 +150,9 @@ class Game:
             # if data == 
             self.createNewPlayer(password)
         else:
-            
+            for player in self.getPlayersList():
+                if player.password == password:
+                    player.actions.append(data)
 #     def changeBlock(self, x, y, newId):
 #         if self.checkIfInsideWorld(x, y, 0, 0):
 #             self.world[y][x] = data.getObjectInfo(newId)
