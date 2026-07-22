@@ -15,11 +15,8 @@ class Game:
         self.zonePositions = {}
         self.entitiesPos = {}
         self.playersPos = {}
-        self.TCPserver = serverTCP.Server(("0.0.0.0", 65432), self.processClientData)
         self.idCounter = 0
         self.worldSaver = dataSaving.DataSaving(data.worldFilePath)
-        self.playerSaver = dataSaving.DataSaving(data.playersFilePath)
-        self.restorePlayers()
         world = self.worldSaver.loadData()
         if world:
             self.world = world
@@ -27,6 +24,9 @@ class Game:
         else:
             self.createNewWorld()
             self.worldSaver.saveData(self.world)
+        self.playerSaver = dataSaving.DataSaving(data.playersFilePath)
+        self.restorePlayers()
+        self.TCPserver = serverTCP.Server(("0.0.0.0", 65432), self.processClientData)
         self.webServer = ServerHTML(host="0.0.0.0", port=5000, game=self)
         self.initZonePositions()
         self.entitySpawn = {
@@ -47,6 +47,8 @@ class Game:
 
     def restorePlayers(self):
         players = self.playerSaver.loadData()
+        if players == None:
+            return
         for playerPassword in players:
             playerRestoreValues = players[playerPassword]
             player = Player(data.spawnPos, data.getObjectInfo(27), self.idCounter, self, '')
@@ -146,13 +148,16 @@ class Game:
             mapPart.append(row)
         return mapPart
     def processClientData(self, data, password):
-        if password not in self.playerSaver.loadData():
-            # if data == 
+        if not data:
+            return
+        if data == 'login':
             self.createNewPlayer(password)
+            return 'ok'
         else:
             for player in self.getPlayersList():
                 if player.password == password:
                     player.actions.append(data)
+        return 'ok'
 #     def changeBlock(self, x, y, newId):
 #         if self.checkIfInsideWorld(x, y, 0, 0):
 #             self.world[y][x] = data.getObjectInfo(newId)

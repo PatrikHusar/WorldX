@@ -7,9 +7,14 @@ class Client:
         self.__client.connect(self.__adress)
 
     def sendMessage(self, message):
-        self.__client.sendall(message.encode("utf-8"))
-        response = self.__client.recv(1024).decode("utf-8")
-        return response
+        try:
+            self.__client.sendall(message.encode("utf-8"))
+            response = self.__client.recv(1024).decode("utf-8")
+            print(f'responded: {response}')
+            return response
+        except Exception as e:
+            print(f"comm error: {e}")
+            return None
     
     def closeConnection(self):
         self.__client.close()
@@ -17,12 +22,16 @@ class Client:
 client = Client(("127.0.0.1", 65432))
 
 def forward():
-    client.sendMessage('forward')
+    return client.sendMessage('forward')
+
 def turn_left():
-    client.sendMessage('left')
+    return client.sendMessage('left')
+
 def turn_right():
-    client.sendMessage('right')
+    return client.sendMessage('right')
+
 def turn_towards(dir):
-    client.sendMessage(f'turnTo:{dir}')
+    return client.sendMessage(f'turnTo:{dir}')
+
 def login(password):
-    client.sendMessage(f'login:{password}')
+    return client.sendMessage(f'login:{password}')

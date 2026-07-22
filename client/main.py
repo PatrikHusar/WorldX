@@ -1,6 +1,7 @@
-from client.client import*
+from client import*
 
 login('patko')
 
 turn_right()
-forward()
+while True:
+    forward()
