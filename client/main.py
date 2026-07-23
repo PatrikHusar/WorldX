@@ -1,7 +1,10 @@
-from client import*
+from client import login, is_pressed, turn_right, turn_left, forward, turn_towards
 
 login('patko')
-
-turn_right()
 while True:
-    forward()
+    if is_pressed('w'):
+        forward()
+    elif is_pressed('d'):
+        turn_right()
+    elif is_pressed('a'):
+        turn_left()

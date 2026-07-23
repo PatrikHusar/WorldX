@@ -1,37 +1,79 @@
 import socket
+import threading
+import time
+from blessed import Terminal
 
 class Client:
     def __init__(self, adress) -> None:
         self.__adress = adress
         self.__client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.__client.connect(self.__adress)
+        connecting = True
+        self.pressedKeys = set()
+        self.physicalyPressed = set()
+        self.last_key_time = 0
+        self.__running = True
+        self.term = Terminal()
+        while connecting:
+            try:
+                self.__client.connect(self.__adress)
+                connecting = False
+            except:
+                pass
+            time.sleep(1)
+            print("waiting for server to start.")
+        print("connected to server, have fun!")
+        self.input_thread = threading.Thread(target=self.__loop_input, daemon=True).start()
+
+    def __loop_input(self):
+        with self.term.cbreak():
+            while self.__running:
+                char = self.term.inkey(timeout=0.02)
+
+                if char:
+                    char_lower = char.lower()
+                    self.last_key_time = time.time()
+
+                    if char_lower not in self.physicalyPressed:
+                        self.pressedKeys.add(char_lower)
+                        self.physicalyPressed.add(char_lower)
+                else:
+                    if time.time() - self.last_key_time > 0.08:
+                        self.physicalyPressed.clear()
 
     def sendMessage(self, message):
         try:
             self.__client.sendall(message.encode("utf-8"))
             response = self.__client.recv(1024).decode("utf-8")
-            print(f'responded: {response}')
+            print(f"responded: {response}")
             return response
         except Exception as e:
             print(f"comm error: {e}")
             return None
-    
+
     def closeConnection(self):
+        self.__running = False
         self.__client.close()
 
 client = Client(("127.0.0.1", 65432))
 
 def forward():
-    return client.sendMessage('forward')
+    threading.Thread(target=client.sendMessage, args=("forward",), daemon=True).start()
 
 def turn_left():
-    return client.sendMessage('left')
+    threading.Thread(target=client.sendMessage, args=("left",), daemon=True).start()
 
 def turn_right():
-    return client.sendMessage('right')
+    threading.Thread(target=client.sendMessage, args=("right",), daemon=True).start()
 
 def turn_towards(dir):
-    return client.sendMessage(f'turnTo:{dir}')
+    threading.Thread(target=client.sendMessage, args=(f"turnTo:{dir}",), daemon=True).start()
 
 def login(password):
-    return client.sendMessage(f'login:{password}')
+    return client.sendMessage(f"login:{password}")
+
+def is_pressed(klaves):
+    char = klaves.lower()
+    if char in client.pressedKeys:
+        client.pressedKeys.remove(char)
+        return True
+    return False
