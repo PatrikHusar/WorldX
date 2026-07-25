@@ -1,10 +1,10 @@
-import dataSaving
+from dataSaving import DataSaving
 from serverHTML.serverHTML import ServerHTML
 import data
 from player import Player
-import serverTCP
-from mapper import PygameMapper
-import threading
+from serverTCP import Server
+# from mapper import PygameMapper
+from threading import Thread
 from entity import Entity
 import time
 import random
@@ -17,7 +17,7 @@ class Game:
         self.playersPos = {}
         self.idCounter = 0
         self.adressToPassword = {}
-        self.worldSaver = dataSaving.DataSaving(data.worldFilePath)
+        self.worldSaver = DataSaving(data.worldFilePath)
         world = self.worldSaver.loadData()
         if world:
             self.world = world
@@ -25,45 +25,41 @@ class Game:
         else:
             self.createNewWorld()
             self.worldSaver.saveData(self.world)
-        self.playerSaver = dataSaving.DataSaving(data.playersFilePath)
-        # self.restorePlayers()
-        self.TCPserver = serverTCP.Server(("0.0.0.0", 65432), self.processClientData)
+        self.playerSaver = DataSaving(data.playersFilePath)
+        self.restorePlayers()
+        self.TCPserver = Server(("0.0.0.0", 65432), self.processClientData)
         self.webServer = ServerHTML(host="0.0.0.0", port=5000, game=self)
         self.initZonePositions()
-        self.entitySpawn = {
-            'forest': (self.getRandomPos, data.getObjectInfo(4)),
-            'tundra': (self.getRandomPos, data.getObjectInfo(5)),
-            'swamp': (self.getRandomPos, data.getObjectInfo(18)),
-            'desert': (self.getRandomPos, data.getObjectInfo(23)),
-            'volcano': (self.getRandomPos, data.getObjectInfo(24))
-        }
         self.spawnEntities()
-        threading.Thread(target=self.main, daemon=True).start()
+        Thread(target=self.main, daemon=True).start()
         self.webServer.startServer()
     
-    def createNewPlayer(self, password):
+    def createPlayer(self, password, restore=False):
         player = Player(data.spawnPos, data.getObjectInfo(27), self.idCounter, self, password)
         self.idCounter += 1
-        # self.savePlayer(player)
+        if restore:
+            player.restorePlayer(restore['chestInventory'], restore['inventory'], restore['graves'])
+        self.playersPos[player.playerId] = (int(player.x), int(player.y))
+        self.world[int(player.y)][int(player.x)]['entities'][player.playerId] = player
+        self.savePlayer(player)
 
     def restorePlayers(self):
         players = self.playerSaver.loadData()
         if players == None:
             return
         for playerPassword in players:
-            playerRestoreValues = players[playerPassword]
-            player = Player(data.spawnPos, data.getObjectInfo(27), self.idCounter, self, '')
-            player.restorePlayer(playerRestoreValues['chestInventory'], playerRestoreValues['inventory'], playerRestoreValues['graves'], playerPassword)
-            self.idCounter += 1
+            self.createPlayer(playerPassword, players[playerPassword])
 
     def savePlayer(self, player):
-        playerData = {}
         saveData = {}
         saveData['chestInventory'] = player.player['chestInventory']
         saveData['inventory'] = player.player['inventory']
         saveData['graves'] = player.player['graves']
-        playerData[player.password] = saveData
-        self.playerSaver.saveData(playerData)
+        loadData = self.playerSaver.loadData()
+        if loadData == None:
+            loadData = {}
+        loadData[player.password] = saveData
+        self.playerSaver.saveData(loadData)
 
     def initZonePositions(self):
         for y in range(data.worldSize):
@@ -79,8 +75,8 @@ class Game:
         for zone in data.zones:
             zoneType = zone['zone']
             for _ in range(data.maxEnemiesInZone[zoneType]):
-                self.entitiesPos[self.idCounter] = self.entitySpawn[zoneType][0](zoneType)
-                entity = Entity(self.entitiesPos[self.idCounter], self.entitySpawn[zoneType][1], self.idCounter, self)
+                self.entitiesPos[self.idCounter] = self.getRandomPos(zoneType)
+                entity = Entity(self.entitiesPos[self.idCounter], data.entitySpawn[zoneType], self.idCounter, self)
                 self.world[int(entity.y)][int(entity.x)]['entities'][entity.entityId] = entity
                 self.idCounter += 1
 
@@ -154,6 +150,7 @@ class Game:
         for player in self.getPlayersList():
             if player.password == password:
                 return player
+        return None
     def processClientData(self, playerMessage, adress):
         if adress in self.adressToPassword:
             if playerMessage.startswith(tuple(['forward', 'left', 'right', 'turnTo:'])):
@@ -165,8 +162,9 @@ class Game:
         else:
             if playerMessage.startswith('login:'):
                 password = playerMessage[6:]
+                if self.getPlayerByPassword(password) == None:
+                    self.createPlayer(password)
                 self.adressToPassword[adress] = password
-                self.createNewPlayer(password)
         return 'ok'
 #     def changeBlock(self, x, y, newId):
 #         if self.checkIfInsideWorld(x, y, 0, 0):

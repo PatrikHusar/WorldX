@@ -10,5 +10,5 @@ class DataSaving:
         try:
             with open(self.dataPath, "rb") as f:
                 return pickle.load(f)
-        except FileNotFoundError:
+        except:
             return None

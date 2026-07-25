@@ -74,6 +74,14 @@ objects = [
     {'type': 'player', 'id': 27, 'health': 100, 'damage': 15, 'speed': 1, 'sight': 5, 'pause': 0.18, 'allowedBlocks': [0, 6, 20, 17, 13, 1, 3, 9, 19, 22], 'swimmingSkill': 0, 'inventory': [], 'graves': {}, 'equipped': {'hand': None, 'back': None, 'head': None, 'feet': None}, 'chestInventory': []}
 ]
 
+entitySpawn = {
+    'forest': getObjectInfo(4),
+    'tundra': getObjectInfo(5),
+    'swamp': getObjectInfo(18),
+    'desert': getObjectInfo(23),
+    'volcano': getObjectInfo(24)
+}
+
 zones = [
     {'zone': 'forest', 'block': getObjectInfo(0), 'entities': {}},
     {'zone': 'desert', 'block': getObjectInfo(6), 'entities': {}},
@@ -82,32 +90,30 @@ zones = [
     {'zone': 'volcano', 'block': getObjectInfo(13), 'entities': {}}
 ]
 
-# idToName = {
-    # 0: 'grass',
-    # 1: 'water',
-    # 2: 'tree',
-    # 3: 'lava',
-    # 4: 'duck',
-    # 5: 'rat',
-    # 6: 'sand',
-    # 7: 'sandstone',
-    # 8: 'airshipBlock',
-    # 9: 'airshipPath',
-    # 10: 'chest',
-    # 11: 'craftingTable',
-    # 12: 'researchStation',
-    # 13: 'bassalt',
-    # 14: 'volcanicWall',
-    # 15: 'deadTree',
-    # 16: 'swampTree',
-    # 17: 'mud',
-    # 18: 'crocodile',
-    # 19: 'swampWater',
-    # 20: 'snow',
-    # 21: 'icespike',
-    # 22: 'ice',
-    # 23: 'bug',
-    # 24: 'golem',
-    # 25: 'grave',
-    # 26: 'cloud'
-# }
+# 0: 'grass',
+# 1: 'water',
+# 2: 'tree',
+# 3: 'lava',
+# 4: 'duck',
+# 5: 'rat',
+# 6: 'sand',
+# 7: 'sandstone',
+# 8: 'airshipBlock',
+# 9: 'airshipPath',
+# 10: 'chest',
+# 11: 'craftingTable',
+# 12: 'researchStation',
+# 13: 'bassalt',
+# 14: 'volcanicWall',
+# 15: 'deadTree',
+# 16: 'swampTree',
+# 17: 'mud',
+# 18: 'crocodile',
+# 19: 'swampWater',
+# 20: 'snow',
+# 21: 'icespike',
+# 22: 'ice',
+# 23: 'bug',
+# 24: 'golem',
+# 25: 'grave',
+# 26: 'cloud'

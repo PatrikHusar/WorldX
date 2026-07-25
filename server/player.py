@@ -15,9 +15,6 @@ class Player:
         self.moveTargetY = float(self.y)
         self.time = 0
         self.actions = []
-        
-        self.game.playersPos[id] = (int(self.x), int(self.y))
-        self.game.world[int(self.y)][int(self.x)]['entities'][self.playerId] = self
 
     def equipItem(self, item, place):
         pass
@@ -26,11 +23,10 @@ class Player:
     def takeItem(self, item):
         pass
         
-    def restorePlayer(self, chestInventory, inventory, graves, password):
+    def restorePlayer(self, chestInventory, inventory, graves):
         self.player['chestInventory'] = chestInventory
         self.player['inventory'] = inventory
         self.player['graves'] = graves
-        self.password = password
 
     def turnTowards(self, currentTime, dir):
         if currentTime - self.time < self.player['pause'] or self.isMoving:
