@@ -37,7 +37,7 @@ class Entity:
             self.time = currentTime
 
     def move(self, currentTime):
-        if self.isMoving == True or currentTime - self.time < self.entity['pause'] + self.startingPause:
+        if self.isMoving or currentTime - self.time < self.entity['pause'] + self.startingPause:
             return
         if self.time != 0:
             self.startingPause = 0.0
@@ -58,8 +58,9 @@ class Entity:
         for d in data.dirs:
             targetX = mid + self.offsets[d][0]
             targetY = mid + self.offsets[d][1]
-            if self.canWalkOn(mapPart[targetY][targetX]):
-                possibleDirs.append(d)
+            if 0 <= targetY < len(mapPart) and 0 <= targetX < len(mapPart[0]):
+                if self.canWalkOn(mapPart[targetY][targetX]):
+                    possibleDirs.append(d)
         return possibleDirs
 
     def passive(self):
@@ -75,20 +76,24 @@ class Entity:
             self.executeStep(moveChoice)
 
     def aggressive(self):
-        width = self.entity['sight'] * 2 + 1
-        mapData = self.game.getMapPart(int(self.x) - self.entity['sight'], int(self.y) - self.entity['sight'], width, width)
+        sight = int(self.entity.get('sight', 3))
+        width = sight * 2 + 1
+        mapData = self.game.getMapPart(int(self.x) - sight, int(self.y) - sight, width, width)
         
-        playerCell = None
-        targetX, targetY = 0, 0
+        targetX, targetY = None, None
         
         for rIdx, row in enumerate(mapData):
-            for cIdx, object in enumerate(row):
-                if object['entities'].get('type') == 'player':
-                    playerCell = object['object']
-                    targetX = int(self.x) - self.entity['sight'] + cIdx
-                    targetY = int(self.y) - self.entity['sight'] + rIdx
+            for cIdx, cell in enumerate(row):
+                if 'entities' in cell:
+                    for entId, entObj in cell['entities'].items():
+                        if entObj.__class__.__name__ == "Player":
+                            targetX = int(self.x) - sight + cIdx
+                            targetY = int(self.y) - sight + rIdx
+                            break
+            if targetX is not None:
+                break
 
-        if not playerCell:
+        if targetX is None:
             self.passive()
             return
 
@@ -99,22 +104,18 @@ class Entity:
             self.passive()
 
     def pathFind(self, mapPart, targetX, targetY):
-        sight = self.entity['sight']
+        sight = int(self.entity.get('sight', 3))
         startX, startY = int(self.x), int(self.y)
         width = len(mapPart)
-        
         startC, startR = sight, sight
         targetC = int(targetX) - startX + sight
         targetR = int(targetY) - startY + sight
-        
         queue = [(startR, startC, [])]
         visited = {(startR, startC)}
-        
         while queue:
             r, c, path = queue.pop(0)
             if r == targetR and c == targetC:
                 return path[0] if path else None
-                
             for direction, (dx, dy) in self.offsets.items():
                 nr, nc = r + dy, c + dx
                 if 0 <= nr < width and 0 <= nc < width and (nr, nc) not in visited:
@@ -124,11 +125,11 @@ class Entity:
         return None
 
     def executeStep(self, moveChoice):
-        newX, newY = self.x, self.y
-        newX += self.offsets[moveChoice][0]
-        newY += self.offsets[moveChoice][1]     
+        oldX, oldY = int(self.x), int(self.y)
+        newX = oldX + self.offsets[moveChoice][0]
+        newY = oldY + self.offsets[moveChoice][1]
         self.moveTargetX = float(newX)
         self.moveTargetY = float(newY)
         self.dir = moveChoice
         self.isMoving = True
-        self.game.updateEntityMovement((self.x, self.y), (newX, newY), self.entityId)
+        self.game.updateEntityMovement((oldX, oldY), (newX, newY), self.entityId)

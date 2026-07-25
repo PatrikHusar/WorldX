@@ -1,5 +1,4 @@
 import os
-import time
 from flask import Flask, jsonify, request, render_template_string
 import data
 
@@ -96,7 +95,6 @@ class ServerHTML:
                     entity_type = "entity"
                     eSight = getattr(entityObj, 'sight', 3)
                 
-                # Ak hra dynamicky mení smer alebo pridáva stav animácie, zoberieme presne to, čo posiela objekt
                 eDir = getattr(entityObj, 'dir', 'south')
                 eX = int(getattr(entityObj, 'x', 0))
                 eY = int(getattr(entityObj, 'y', 0))
@@ -106,12 +104,7 @@ class ServerHTML:
                 else:
                     eHp = getattr(entityObj, 'hp', 100)
 
-                # Ak váš systém animácií priamo generuje iný názov assetu (napr. číslo snímku), 
-                # skontrolujte, či sa to nevolá inak. Štandardne držíme formát id + smer.
                 asset_name = f"{type_id}{eDir}"
-                
-                # AK MÁTE ANIMÁCIE RIEŠENÉ CEZ ATRIBÚT (napr. entityObj.current_frame), upovedomte ma, 
-                # upravili by sme riadok vyššie.
                 
                 entitiesList.append({
                     "id": unique_id,
@@ -134,16 +127,19 @@ class ServerHTML:
         <head>
             <title>WorldX Map Viewer</title>
             <style>
-                body { font-family: Arial, sans-serif; background: #222; color: white; text-align: center; margin: 0; padding: 5px 10px; user-select: none; overflow-y: hidden; }
-                .control-panel { display: flex; justify-content: center; align-items: center; gap: 20px; margin-top: 10px; margin-bottom: 10px; }
-                #coordinates { font-weight: bold; color: #4CAF50; font-size: 18px; font-family: monospace; }
-                .teleport-container input { padding: 6px; font-size: 13px; border: 1px solid #666; border-radius: 4px; background: #333; color: white; text-align: center; width: 120px; }
-                .teleport-container button { padding: 6px 12px; font-size: 13px; background: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer; margin-left: 5px; font-weight: bold; }
+                * { box-sizing: border-box; }
+                html, body { width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; background: #222; color: white; font-family: Arial, sans-serif; user-select: none; }
+                body { display: flex; flex-direction: column; }
+                
+                .control-panel { display: flex; justify-content: center; align-items: center; gap: 20px; padding: 8px; background: #1a1a1a; flex-shrink: 0; }
+                #coordinates { font-weight: bold; color: #4CAF50; font-size: 16px; font-family: monospace; }
+                .teleport-container input { padding: 4px; font-size: 13px; border: 1px solid #666; border-radius: 4px; background: #333; color: white; text-align: center; width: 100px; }
+                .teleport-container button { padding: 4px 10px; font-size: 13px; background: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
                 .teleport-container button:hover { background: #0b7dda; }
                 
-                .main-layout { display: flex; justify-content: center; align-items: flex-start; gap: 15px; max-width: 100vw; box-sizing: border-box; padding: 0 10px; }
-                #canvasContainer { position: relative; }
-                #gameCanvas { border: 4px solid #555; background: #000; box-shadow: 0px 4px 15px rgba(0,0,0,0.5); cursor: grab; display: block; }
+                .main-layout { display: flex; flex: 1; position: relative; width: 100%; height: calc(100% - 45px); padding: 5px; gap: 10px; }
+                #canvasContainer { flex: 1; height: 100%; position: relative; display: flex; justify-content: center; align-items: center; background: #000; border: 2px solid #555; overflow: hidden; }
+                #gameCanvas { cursor: grab; display: block; }
                 #gameCanvas:active { cursor: grabbing; }
                 
                 #infoPanel { 
@@ -151,11 +147,11 @@ class ServerHTML:
                     border: 2px solid #4CAF50; 
                     border-radius: 6px; 
                     padding: 15px; 
-                    width: 250px; 
+                    width: 220px; 
                     text-align: left; 
                     font-size: 14px; 
                     box-shadow: 0px 2px 8px rgba(0,0,0,0.4); 
-                    align-self: stretch;
+                    flex-shrink: 0;
                 }
                 #infoPanel h3 { margin: 0 0 10px 0; color: #4CAF50; font-size: 16px; border-bottom: 1px solid #555; padding-bottom: 5px; }
                 .info-row { display: flex; justify-content: space-between; margin-bottom: 5px; }
@@ -168,7 +164,7 @@ class ServerHTML:
             <div class="control-panel">
                 <div id="coordinates">x: 0, y: 0</div>
                 <div class="teleport-container">
-                    <input type="text" id="teleportPosition" placeholder="x, y (e.g., 50, 30)" onkeydown="checkEnter(event)">
+                    <input type="text" id="teleportPosition" placeholder="x, y" onkeydown="checkEnter(event)">
                     <button onclick="teleport()">Teleport</button>
                 </div>
             </div>
@@ -180,7 +176,7 @@ class ServerHTML:
                 
                 <div id="infoPanel" class="hidden">
                     <h3>Detail entity</h3>
-                    <div class="info-row"><span class="info-label">Pozícia vo svete:</span><span class="info-value" id="infoPos">x: 0, y: 0</span></div>
+                    <div class="info-row"><span class="info-label">Pozícia:</span><span class="info-value" id="infoPos">x: 0, y: 0</span></div>
                     <div class="info-row"><span class="info-label">ID / Typ:</span><span class="info-value" id="infoType">N/A</span></div>
                     <div class="info-row"><span class="info-label">HP:</span><span class="info-value" id="infoHp">N/A</span></div>
                     <div class="info-row"><span class="info-label">Zóna:</span><span class="info-value" id="infoZone">N/A</span></div>
@@ -189,25 +185,23 @@ class ServerHTML:
 
             <script>
                 const canvas = document.getElementById('gameCanvas'); 
+                const canvasContainer = document.getElementById('canvasContainer');
                 const ctx = canvas.getContext('2d');
                 
-                const visibleColumns = 40; 
-                const visibleRows = 20; 
                 const baseBlockSize = 40; 
-                
                 let zoomLevel = 1.0;
                 const minZoom = 0.4;
                 const maxZoom = 2.5;
                 
-                let cameraC = 40.0; 
-                let cameraR = 64.0; 
+                // Počiatočná pozícia kamery presne podľa tvojej požiadavky
+                let cameraC = 64.0; 
+                let cameraR = 40.0; 
                 let maxWorldSize = 180;
                 
                 let fullWorldMap = []; 
                 let currentEntities = [];
                 
                 const discoveredTiles = {}; 
-                
                 let selectedEntity = null;
                 
                 let isDragging = false;
@@ -215,14 +209,18 @@ class ServerHTML:
                 let startCameraC, startCameraR;
                 let totalDragDistance = 0;
 
-                canvas.width = visibleColumns * baseBlockSize; 
-                canvas.height = visibleRows * baseBlockSize;
+                function resizeCanvas() {
+                    canvas.width = canvasContainer.clientWidth;
+                    canvas.height = canvasContainer.clientHeight;
+                }
+                window.addEventListener('resize', resizeCanvas);
+                resizeCanvas();
 
                 const blocksConfig = {{ blocksBackend | tojson }};
                 const textures = {};
                 let loadedImagesCount = 0;
 
-                const assetsToLoad = ["26"]; 
+                const assetsToLoad = ["26", "27", "27north", "27east", "27south", "27west"]; 
                 blocksConfig.forEach(block => {
                     assetsToLoad.push(String(block.id));       
                     assetsToLoad.push(block.id + "north");    
@@ -237,35 +235,30 @@ class ServerHTML:
                     const img = new Image();
                     img.src = `/static/${assetName}.png`;
                     img.onload = function() {
-                        loadedImagesCount++;
-                        if (loadedImagesCount === totalAssetsCount) {
-                            loadEntireWorld();
-                        }
+                        textures[assetName] = img;
+                        checkAllLoaded();
                     };
                     img.onerror = function() {
-                        loadedImagesCount++;
-                        if (loadedImagesCount === totalAssetsCount) {
-                            loadEntireWorld();
-                        }
+                        textures[assetName] = null;
+                        checkAllLoaded();
                     };
-                    textures[assetName] = img;
                 });
 
-                // Zabezpečíme okamžitú registráciu chýbajúcej textúry bez lagov
+                function checkAllLoaded() {
+                    loadedImagesCount++;
+                    if (loadedImagesCount === totalAssetsCount) {
+                        loadEntireWorld();
+                    }
+                }
+
                 function loadAndRegisterAsset(assetName) {
-                    if (textures[assetName]) return;
-                    
-                    // Dočasne vložíme placeholder, aby sme nespúšťali sťahovanie 100x pre ten istý asset
+                    if (textures[assetName] !== undefined) return;
                     textures[assetName] = "loading"; 
                     
                     const img = new Image();
                     img.src = `/static/${assetName}.png`;
-                    img.onload = () => { 
-                        textures[assetName] = img; 
-                    };
-                    img.onerror = () => { 
-                        textures[assetName] = null; 
-                    };
+                    img.onload = () => { textures[assetName] = img; };
+                    img.onerror = () => { textures[assetName] = null; };
                 }
 
                 function loadEntireWorld() {
@@ -284,9 +277,33 @@ class ServerHTML:
                 function loadEntitiesOnly() {
                     fetch('/api/entities')
                         .then(res => res.json())
-                        .then(entities => {
-                            currentEntities = entities;
-                            
+                        .then(newEntities => {
+                            const updatedIds = new Set();
+
+                            newEntities.forEach(nEnt => {
+                                updatedIds.add(nEnt.id);
+                                let existing = currentEntities.find(e => e.id === nEnt.id);
+                                
+                                if (existing) {
+                                    existing.targetX = Number(nEnt.x);
+                                    existing.targetY = Number(nEnt.y);
+                                    existing.asset = nEnt.asset;
+                                    existing.hp = nEnt.hp;
+                                    existing.sight = nEnt.sight;
+                                    existing.type = nEnt.type;
+                                } else {
+                                    nEnt.x = Number(nEnt.x);
+                                    nEnt.y = Number(nEnt.y);
+                                    nEnt.targetX = nEnt.x;
+                                    nEnt.targetY = nEnt.y;
+                                    currentEntities.push(nEnt);
+                                }
+                                
+                                loadAndRegisterAsset(nEnt.asset);
+                            });
+
+                            currentEntities = currentEntities.filter(e => updatedIds.has(e.id));
+
                             const player = currentEntities.find(ent => ent.type === "player");
                             if (player) {
                                 const pX = Math.floor(player.x);
@@ -300,13 +317,6 @@ class ServerHTML:
                                     }
                                 }
                             }
-
-                            // Okamžitá kontrola a dočítanie chýbajúcich stavov animácií
-                            currentEntities.forEach(ent => {
-                                if (!textures[ent.asset]) {
-                                    loadAndRegisterAsset(ent.asset);
-                                }
-                            });
                             
                             updateInfoPanel();
                         });
@@ -339,12 +349,23 @@ class ServerHTML:
                     const startDrawX = Math.floor(cameraC);
                     const startDrawY = Math.floor(cameraR);
 
+                    // Plynulá animácia pohybu
+                    currentEntities.forEach(ent => {
+                        if (ent.targetX !== undefined && !isNaN(ent.targetX)) {
+                            ent.x += (ent.targetX - ent.x) * 0.25;
+                        }
+                        if (ent.targetY !== undefined && !isNaN(ent.targetY)) {
+                            ent.y += (ent.targetY - ent.y) * 0.25;
+                        }
+                    });
+
                     const player = currentEntities.find(ent => ent.type === "player");
                     const pX = player ? Math.floor(player.x) : 0;
                     const pY = player ? Math.floor(player.y) : 0;
                     const pSight = player ? player.sight : 5;
                     const now = Date.now();
 
+                    // 1. Vykreslenie podkladu (blokov)
                     for (let r = -1; r < rowsToDraw; r++) {
                         for (let c = -1; c < colsToDraw; c++) {
                             const wx = startDrawX + c;
@@ -377,6 +398,7 @@ class ServerHTML:
                         }
                     }
 
+                    // 2. Vykreslenie hráčov a entít
                     currentEntities.forEach(ent => {
                         const posX = (ent.x - cameraC) * drawSize;
                         const posY = (ent.y - cameraR) * drawSize;
@@ -389,8 +411,24 @@ class ServerHTML:
                         const seenRecent = (now - (discoveredTiles[`${entX},${entY}`] || 0) <= 60000);
 
                         if (inSight || seenRecent || ent.type === "player") {
-                            if (textures[ent.asset] && textures[ent.asset] !== "loading") {
-                                ctx.drawImage(textures[ent.asset], posX, posY, drawSize, drawSize);
+                            let img = textures[ent.asset];
+                            
+                            if (!img || img === "loading") {
+                                const baseAsset = ent.asset.replace(/(north|south|east|west)/g, '');
+                                img = textures[baseAsset];
+                            }
+
+                            if (img && img !== "loading") {
+                                ctx.drawImage(img, posX, posY, drawSize, drawSize);
+                            } else {
+                                // FALLBACK: Ak chýba obrázok v static/, nakreslíme výrazný kruh
+                                ctx.beginPath();
+                                ctx.arc(posX + drawSize / 2, posY + drawSize / 2, drawSize * 0.4, 0, 2 * Math.PI);
+                                ctx.fillStyle = (ent.type === "player") ? "#4CAF50" : "#F44336";
+                                ctx.fill();
+                                ctx.lineWidth = 2;
+                                ctx.strokeStyle = "#FFFFFF";
+                                ctx.stroke();
                             }
                         }
                     });
@@ -407,15 +445,6 @@ class ServerHTML:
                     
                     if (worldX >= 0 && worldX < maxWorldSize && worldY >= 0 && worldY < maxWorldSize) {
                         document.getElementById('coordinates').innerText = `x: ${worldX}, y: ${worldY}`;
-                        
-                        if (selectedEntity !== null) {
-                            const ent = currentEntities.find(e => e.id === selectedEntity);
-                            if (ent && Math.floor(ent.x) === worldX && Math.floor(ent.y) === worldY) {
-                                if (fullWorldMap[worldY] && fullWorldMap[worldY][worldX]) {
-                                    document.getElementById('infoZone').innerText = fullWorldMap[worldY][worldX].zone.toUpperCase();
-                                }
-                            }
-                        }
                     }
                 });
 
@@ -442,11 +471,8 @@ class ServerHTML:
                     let newC = startCameraC - (dx / drawSize);
                     let newR = startCameraR - (dy / drawSize);
                     
-                    const maxC = maxWorldSize - (visibleColumns / zoomLevel);
-                    const maxR = maxWorldSize - (visibleRows / zoomLevel);
-                    
-                    cameraC = Math.max(0, Math.min(newC, maxC));
-                    cameraR = Math.max(0, Math.min(newR, maxR));
+                    cameraC = Math.max(0, Math.min(newC, maxWorldSize - 1));
+                    cameraR = Math.max(0, Math.min(newR, maxWorldSize - 1));
                 });
 
                 window.addEventListener('mouseup', function(e) {
@@ -478,11 +504,8 @@ class ServerHTML:
                     const gridXBefore = cameraC + (mouseX / (baseBlockSize * previousZoom));
                     const gridYBefore = cameraR + (mouseY / (baseBlockSize * previousZoom));
                     
-                    const maxC = maxWorldSize - (visibleColumns / zoomLevel);
-                    const maxR = maxWorldSize - (visibleRows / zoomLevel);
-                    
-                    cameraC = Math.max(0, Math.min(gridXBefore - (mouseX / (baseBlockSize * zoomLevel)), maxC));
-                    cameraR = Math.max(0, Math.min(gridYBefore - (mouseY / (baseBlockSize * zoomLevel)), maxR));
+                    cameraC = Math.max(0, Math.min(gridXBefore - (mouseX / (baseBlockSize * zoomLevel)), maxWorldSize - 1));
+                    cameraR = Math.max(0, Math.min(gridYBefore - (mouseY / (baseBlockSize * zoomLevel)), maxWorldSize - 1));
                 });
 
                 function handleCanvasClick(e) {
@@ -494,8 +517,8 @@ class ServerHTML:
                     const clickWorldY = cameraR + (clickY / drawSize);
                     
                     const clickedEntity = currentEntities.find(ent => {
-                        return Math.abs(ent.x + 0.5 - clickWorldX) <= 0.5 && 
-                               Math.abs(ent.y + 0.5 - clickWorldY) <= 0.5;
+                        return Math.abs(ent.x + 0.5 - clickWorldX) <= 0.8 && 
+                               Math.abs(ent.y + 0.5 - clickWorldY) <= 0.8;
                     });
                     
                     if (clickedEntity) {
@@ -509,7 +532,7 @@ class ServerHTML:
 
                 function showEntityDetails(ent) {
                     const infoPanel = document.getElementById('infoPanel');
-                    document.getElementById('infoPos').innerText = `x: ${ent.x.toFixed(2)}, y: ${ent.y.toFixed(2)}`;
+                    document.getElementById('infoPos').innerText = `x: ${Math.floor(ent.x)}, y: ${Math.floor(ent.y)}`;
                     
                     const ex = Math.floor(ent.x);
                     const ey = Math.floor(ent.y);
@@ -546,11 +569,8 @@ class ServerHTML:
                     let targetY = parseInt(parts[1].trim()); 
                     if (isNaN(targetX) || isNaN(targetY)) return;
                     
-                    const maxC = maxWorldSize - (visibleColumns / zoomLevel); 
-                    const maxR = maxWorldSize - (visibleRows / zoomLevel);
-                    
-                    cameraC = Math.max(0, Math.min(targetX, maxC)); 
-                    cameraR = Math.max(0, Math.min(targetY, maxR)); 
+                    cameraC = Math.max(0, Math.min(targetX, maxWorldSize - 1)); 
+                    cameraR = Math.max(0, Math.min(targetY, maxWorldSize - 1)); 
                 }
             </script>
         </body>

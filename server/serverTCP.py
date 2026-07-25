@@ -7,8 +7,6 @@ class Server:
         self.processClientData = processClientData
         self.clients = []
         self.adresses = []
-        self.passwords = {}
-        
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.server.bind(self.adress)
@@ -19,25 +17,14 @@ class Server:
 
     def clientLoop(self, client, adress):
         loginData = self.getMessage(client, adress)
-        if not loginData or not loginData.startswith('login:'):
-            self.sendMessage(client, "error:invalid_login_format")
-            self.closeConnection(client, adress)
-            return
-        password = loginData[6:]
-        if adress[0] not in self.passwords:
-            self.passwords[adress[0]] = password
-        elif self.passwords[adress[0]] != password:
-            self.sendMessage(client, "error:too_many_accounts")
-            self.closeConnection(client, adress)
-            return
-        response = self.processClientData('login', password)
+        response = self.processClientData(loginData, adress[0])
         self.sendMessage(client, response)
         while True:
             data = self.getMessage(client, adress)
             if not data:
                 break
-            response = self.processClientData(data, password)
-            self.sendMessage(client, str(response))
+            response = self.processClientData(data, adress[0])
+            self.sendMessage(client, response)
 
     def acceptConns(self):
         while True:

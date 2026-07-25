@@ -26,7 +26,6 @@ maxEnemiesInZone = {
     'swamp': 30,
     'volcano': 20
 }
-
 # maxChestInZone = {
 #     'forest': 30,
 #     'desert': 15,

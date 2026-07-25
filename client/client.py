@@ -57,16 +57,16 @@ class Client:
 client = Client(("127.0.0.1", 65432))
 
 def forward():
-    threading.Thread(target=client.sendMessage, args=("forward",), daemon=True).start()
+    client.sendMessage("forward")
 
 def turn_left():
-    threading.Thread(target=client.sendMessage, args=("left",), daemon=True).start()
+    client.sendMessage("left")
 
 def turn_right():
-    threading.Thread(target=client.sendMessage, args=("right",), daemon=True).start()
+    client.sendMessage("right")
 
 def turn_towards(dir):
-    threading.Thread(target=client.sendMessage, args=(f"turnTo:{dir}",), daemon=True).start()
+    client.sendMessage(f"turnTo:{dir}")
 
 def login(password):
     return client.sendMessage(f"login:{password}")

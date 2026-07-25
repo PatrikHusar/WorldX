@@ -2,8 +2,8 @@ import data
 
 class Player:
     def __init__(self, pos, player, id, game, password):
-        self.x = int(pos[0])
-        self.y = int(pos[1])
+        self.x = float(pos[0])
+        self.y = float(pos[1])
         self.dir = 'north'
         self.playerId = id
         self.isMoving = False
@@ -16,8 +16,8 @@ class Player:
         self.time = 0
         self.actions = []
         
-        self.game.playersPos[id] = (self.x, self.y)
-        self.game.world[self.y][self.x]['entities'][self.playerId] = self
+        self.game.playersPos[id] = (int(self.x), int(self.y))
+        self.game.world[int(self.y)][int(self.x)]['entities'][self.playerId] = self
 
     def equipItem(self, item, place):
         pass
@@ -25,31 +25,42 @@ class Player:
         pass
     def takeItem(self, item):
         pass
+        
     def restorePlayer(self, chestInventory, inventory, graves, password):
         self.player['chestInventory'] = chestInventory
         self.player['inventory'] = inventory
         self.player['graves'] = graves
         self.password = password
+
     def turnTowards(self, currentTime, dir):
-        if currentTime - self.time < self.player['pause'] or self.isMoving == True:
+        if currentTime - self.time < self.player['pause'] or self.isMoving:
             return
         self.dir = dir
+
     def canWalkOn(self, object):
         if object['block']['id'] in self.player['allowedBlocks']:
             return True
         return False
+
     def forward(self, currentTime):
-        if currentTime - self.time < self.player['pause'] or self.isMoving == True:
+        if currentTime - self.time < self.player['pause'] or self.isMoving:
             return
         self.time = currentTime
-        if self.canWalkOn(self.game.world[int(self.y + self.offsets[self.dir][1])][int(self.x + self.offsets[self.dir][0])]):
-            self.executeStep()
+        
+        targetTileX = int(self.x + self.offsets[self.dir][0])
+        targetTileY = int(self.y + self.offsets[self.dir][1])
+        
+        if self.game.checkIfInsideWorld(targetTileX, targetTileY, 1, 1):
+            if self.canWalkOn(self.game.world[targetTileY][targetTileX]):
+                self.executeStep()
+
     def turnLeft(self, currentTime):
-        if currentTime - self.time < self.player['pause'] or self.isMoving == True:
+        if currentTime - self.time < self.player['pause'] or self.isMoving:
             return
         self.dir = data.dirs[data.dirs.index(self.dir) - 1]
+
     def turnRight(self, currentTime):
-        if currentTime - self.time < self.player['pause'] or self.isMoving == True:
+        if currentTime - self.time < self.player['pause'] or self.isMoving:
             return
         self.dir = data.dirs[(data.dirs.index(self.dir) + 1) % 4]
     
@@ -73,22 +84,22 @@ class Player:
             self.time = currentTime
 
     def executeStep(self):
-        newX, newY = self.x, self.y
-        newX += self.offsets[self.dir][0]
-        newY += self.offsets[self.dir][1]     
+        oldX, oldY = int(self.x), int(self.y)
+        newX = oldX + self.offsets[self.dir][0]
+        newY = oldY + self.offsets[self.dir][1]
         self.moveTargetX = float(newX)
         self.moveTargetY = float(newY)
         self.isMoving = True
-        self.game.updateEntityMovement((self.x, self.y), (newX, newY), self.playerId)
-    
+        self.game.updateEntityMovement((oldX, oldY), (newX, newY), self.playerId)
+
     def doAction(self, currentTime):
-        if len(self.actions) != 0:
-            if self.actions[0] == 'forward':
+        if self.actions:
+            act = self.actions.pop(0)
+            if act == 'forward':
                 self.forward(currentTime)
-                del self.actions[0]
-            elif self.actions[0] == 'left':
+            elif act == 'left':
                 self.turnLeft(currentTime)
-                del self.actions[0]
-            elif self.actions[0] == 'right':
+            elif act == 'right':
                 self.turnRight(currentTime)
-                del self.actions[0]
+            elif act.startswith('turnTo:'):
+                self.turnTowards(currentTime, act[6:])

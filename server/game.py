@@ -16,6 +16,7 @@ class Game:
         self.entitiesPos = {}
         self.playersPos = {}
         self.idCounter = 0
+        self.adressToPassword = {}
         self.worldSaver = dataSaving.DataSaving(data.worldFilePath)
         world = self.worldSaver.loadData()
         if world:
@@ -25,7 +26,7 @@ class Game:
             self.createNewWorld()
             self.worldSaver.saveData(self.world)
         self.playerSaver = dataSaving.DataSaving(data.playersFilePath)
-        self.restorePlayers()
+        # self.restorePlayers()
         self.TCPserver = serverTCP.Server(("0.0.0.0", 65432), self.processClientData)
         self.webServer = ServerHTML(host="0.0.0.0", port=5000, game=self)
         self.initZonePositions()
@@ -43,7 +44,7 @@ class Game:
     def createNewPlayer(self, password):
         player = Player(data.spawnPos, data.getObjectInfo(27), self.idCounter, self, password)
         self.idCounter += 1
-        self.savePlayer(player)
+        # self.savePlayer(player)
 
     def restorePlayers(self):
         players = self.playerSaver.loadData()
@@ -125,13 +126,15 @@ class Game:
         return False
 
     def updateEntityMovement(self, oldPos, newPos, id):
-        self.world[int(newPos[1])][int(newPos[0])]['entities'][id] = self.world[int(oldPos[1])][int(oldPos[0])]['entities'][id]
-        if type(self.world[int(oldPos[1])][int(oldPos[0])]['entities'][id]) == Entity:
-            self.entitiesPos[id] = (int(newPos[0]), int(newPos[1]))
-        else:
-            self.playersPos[id] = (int(newPos[0]), int(newPos[1]))
-        del self.world[int(oldPos[1])][int(oldPos[0])]['entities'][id]
-
+        oldX, oldY = int(oldPos[0]), int(oldPos[1])
+        newX, newY = int(newPos[0]), int(newPos[1])
+        if id in self.world[oldY][oldX]['entities']:
+            entityObj = self.world[oldY][oldX]['entities'].pop(id)
+            self.world[newY][newX]['entities'][id] = entityObj
+            if entityObj.__class__.__name__ == "Entity":
+                self.entitiesPos[id] = (newX, newY)
+            else:
+                self.playersPos[id] = (newX, newY)
     def createNewWorld(self):
         self.world = []
         for r in range(data.worldSize):
@@ -147,16 +150,23 @@ class Game:
                 row.append(self.world[r][c])
             mapPart.append(row)
         return mapPart
-    def processClientData(self, data, password):
-        if not data:
-            return
-        if data == 'login':
-            self.createNewPlayer(password)
-            return 'ok'
+    def getPlayerByPassword(self, password):
+        for player in self.getPlayersList():
+            if player.password == password:
+                return player
+    def processClientData(self, playerMessage, adress):
+        if adress in self.adressToPassword:
+            if playerMessage.startswith(tuple(['forward', 'left', 'right', 'turnTo:'])):
+                self.getPlayerByPassword(self.adressToPassword[adress]).actions.append(playerMessage)
+            else:
+                if playerMessage.startswith('getPos'):
+                    player = self.getPlayerByPassword(self.adressToPassword[adress])
+                    return (player.x, player.y)
         else:
-            for player in self.getPlayersList():
-                if player.password == password:
-                    player.actions.append(data)
+            if playerMessage.startswith('login:'):
+                password = playerMessage[6:]
+                self.adressToPassword[adress] = password
+                self.createNewPlayer(password)
         return 'ok'
 #     def changeBlock(self, x, y, newId):
 #         if self.checkIfInsideWorld(x, y, 0, 0):
