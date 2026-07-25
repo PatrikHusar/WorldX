@@ -1,5 +1,6 @@
 import socket
 import threading
+import json
 
 class Server:
     def __init__(self, adress, processClientData) -> None:
@@ -50,7 +51,7 @@ class Server:
     
     def sendMessage(self, client, message):
         try:
-            client.sendall(message.encode("utf-8"))
+            client.sendall(json.dumps(message).encode("utf-8"))
         except:
             pass
         

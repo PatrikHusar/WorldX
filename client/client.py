@@ -2,6 +2,7 @@ import socket
 import threading
 import time
 from blessed import Terminal
+import json
 
 class Client:
     def __init__(self, adress) -> None:
@@ -43,7 +44,7 @@ class Client:
     def sendMessage(self, message):
         try:
             self.__client.sendall(message.encode("utf-8"))
-            response = self.__client.recv(1024).decode("utf-8")
+            response = json.loads(self.__client.recv(1024).decode("utf-8"))
             print(f"responded: {response}")
             return response
         except Exception as e:
@@ -54,7 +55,7 @@ class Client:
         self.__running = False
         self.__client.close()
 
-client = Client(("127.0.0.1", 65432))
+client = Client(("192.168.0.118", 65432))
 
 def forward():
     client.sendMessage("forward")
