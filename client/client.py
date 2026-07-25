@@ -71,6 +71,9 @@ def turn_towards(dir):
 def login(password):
     return client.sendMessage(f"login:{password}")
 
+def get_position():
+    return client.sendMessage('getPos')
+
 def is_pressed(klaves):
     char = klaves.lower()
     if char in client.pressedKeys:

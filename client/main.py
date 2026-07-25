@@ -1,7 +1,8 @@
-from client import login, is_pressed, turn_right, turn_left, forward, turn_towards
+from client import login, is_pressed, turn_right, turn_left, forward, turn_towards, get_position
 
 login('patko')
 while True:
+    print(get_position())
     if is_pressed('w'):
         forward()
     elif is_pressed('d'):
