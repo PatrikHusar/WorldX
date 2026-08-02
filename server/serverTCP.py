@@ -13,19 +13,19 @@ class Server:
         self.server.bind(self.adress)
         self.server.listen()
         print(f"Server running on: {self.adress[0]}:{self.adress[1]}")
-        
         threading.Thread(target=self.acceptConns, daemon=True).start()
 
     def clientLoop(self, client, adress):
-        loginData = self.getMessage(client, adress)
+        loginData = self.getMessage(client)
         response = self.processClientData(loginData, adress[0])
         self.sendMessage(client, response)
         while True:
-            data = self.getMessage(client, adress)
+            data = self.getMessage(client)
             if not data:
                 break
             response = self.processClientData(data, adress[0])
             self.sendMessage(client, response)
+        self.closeConnection(client, adress)
 
     def acceptConns(self):
         while True:
@@ -38,15 +38,13 @@ class Server:
             except Exception as e:
                 break
 
-    def getMessage(self, client, adress):
+    def getMessage(self, client):
         try:
             data = client.recv(1024).decode("utf-8")
-            if not data:
-                self.closeConnection(client, adress)
+            if not data or data == 'disconnect':
                 return None
             return data
         except:
-            self.closeConnection(client, adress)
             return None
     
     def sendMessage(self, client, message):
@@ -56,13 +54,8 @@ class Server:
             pass
         
     def closeConnection(self, client, adress):
-        if client in self.clients:
-            print(f"Client disconnected: {adress[0]}:{adress[1]}")
-            try:
-                client.close()
-            except:
-                pass
-            if client in self.clients:
-                self.clients.remove(client)
-            if adress in self.adresses:
-                self.adresses.remove(adress)
+        print(f"Client disconnected: {adress[0]}:{adress[1]}")
+        client.close()
+        self.clients.remove(client)
+        self.adresses.remove(adress)
+        self.processClientData('disconnect', adress[0])

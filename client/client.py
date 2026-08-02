@@ -11,7 +11,7 @@ class Client:
         connecting = True
         self.pressedKeys = set()
         self.physicalyPressed = set()
-        self.last_key_time = 0
+        self.lastKeyTime = 0
         self.__running = True
         self.term = Terminal()
         while connecting:
@@ -21,7 +21,7 @@ class Client:
             except:
                 time.sleep(1)
                 print("waiting for server to start.")
-        print("connected to server, have fun!")
+        print("connected to server")
         self.input_thread = threading.Thread(target=self.__loop_input, daemon=True).start()
 
     def __loop_input(self):
@@ -30,24 +30,27 @@ class Client:
                 char = self.term.inkey(timeout=0.02)
 
                 if char:
-                    char_lower = char.lower()
-                    self.last_key_time = time.time()
+                    charLower = char.lower()
+                    self.lastKeyTime = time.time()
 
-                    if char_lower not in self.physicalyPressed:
-                        self.pressedKeys.add(char_lower)
-                        self.physicalyPressed.add(char_lower)
+                    if charLower not in self.physicalyPressed:
+                        self.pressedKeys.add(charLower)
+                        self.physicalyPressed.add(charLower)
                 else:
-                    if time.time() - self.last_key_time > 0.08:
+                    if time.time() - self.lastKeyTime > 0.08:
                         self.physicalyPressed.clear()
 
-    def sendMessage(self, message):
+    def sendMessage(self, message, printResponse=False):
         try:
             self.__client.sendall(message.encode("utf-8"))
             response = json.loads(self.__client.recv(1024).decode("utf-8"))
-            print(f"responded: {response}")
+            if response and printResponse:
+                print(response)
             return response
         except Exception as e:
             print(f"comm error: {e}")
+            print('closing communication..')
+            self.closeConnection()
             return None
 
     def closeConnection(self):
@@ -69,7 +72,7 @@ def turn_towards(dir):
     client.sendMessage(f"turnTo:{dir}")
 
 def login(password):
-    return client.sendMessage(f"login:{password}")
+    return client.sendMessage(f"login:{password}", True)
 
 def get_position():
     return client.sendMessage('getPos')

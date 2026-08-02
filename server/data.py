@@ -70,7 +70,7 @@ objects = [
     {'type': 'enemy', 'typeId': 18, 'health': 80, 'damage': 60, 'speed': 0.8, 'behavior': 'aggressive', 'sight': 7, 'pause': 0.2, 'allowedBlocks': [17, 19]},
     {'type': 'enemy', 'typeId': 23, 'health': 60, 'damage': 40, 'speed': 0.6, 'behavior': 'aggressive', 'sight': 5, 'pause': 0.23, 'allowedBlocks': [6]},
     {'type': 'enemy', 'typeId': 24, 'health': 200, 'damage': 100, 'speed': 1, 'behavior': 'aggressive', 'sight': 9, 'pause': 0.18, 'allowedBlocks': [13, 3]},
-    {'type': 'grave', 'typeId': 25, 'health': 1, 'inventory': []},
+    {'type': 'grave', 'typeId': 25, 'inventory': []},
     {'type': 'player', 'typeId': 27, 'health': 100, 'damage': 15, 'speed': 1, 'sight': 5, 'pause': 0.18, 'allowedBlocks': [0, 6, 20, 17, 13, 1, 3, 9, 19, 22], 'swimmingSkill': 0, 'inventory': [], 'graves': {}, 'equipped': {'hand': None, 'back': None, 'head': None, 'feet': None}, 'chestInventory': []}
 ]
 

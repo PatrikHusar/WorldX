@@ -156,6 +156,9 @@ class Game:
             if self.getPlayerByPassword(password) == None:
                 self.createPlayer(password)
             self.adressToPassword[adress] = password
+            return 'logged in to the server, have fun!'
+        elif playerMessage == 'disconnect':
+            del self.adressToPassword[adress]
         elif adress in self.adressToPassword:
             if playerMessage.startswith(tuple(['forward', 'left', 'right', 'turnTo:'])):
                 self.getPlayerByPassword(self.adressToPassword[adress]).actions.append(playerMessage)
@@ -163,7 +166,7 @@ class Game:
                 if playerMessage.startswith('getPos'):
                     player = self.getPlayerByPassword(self.adressToPassword[adress])
                     return (player.x, player.y)
-        return 'ok'
+        return None
 #     def changeBlock(self, x, y, newId):
 #         if self.checkIfInsideWorld(x, y, 0, 0):
 #             self.world[y][x] = data.getObjectInfo(newId)
