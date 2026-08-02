@@ -2,7 +2,7 @@ import os
 
 def getObjectInfo(id):
     for object in objects:
-        if object['id'] == id:
+        if object['typeId'] == id:
             return object
     return None
 
@@ -44,34 +44,34 @@ maxEnemiesInZone = {
 
 
 objects = [
-    {'type': 'block', 'walkable': True, 'id': 0, 'swimmable': False},
-    {'type': 'block', 'walkable': False, 'id': 1, 'swimmable': 1},
-    {'type': 'block', 'walkable': False, 'id': 2, 'swimmable': False},
-    {'type': 'block', 'walkable': False, 'id': 3, 'swimmable': 2},
-    {'type': 'block', 'walkable': True, 'id': 6, 'swimmable': False},
-    {'type': 'block', 'walkable': False, 'id': 7, 'swimmable': False},
-    {'type': 'block', 'walkable': False, 'id': 8, 'swimmable': False},
-    {'type': 'block', 'walkable': True, 'id': 9, 'swimmable': False},
-    {'type': 'block', 'walkable': False, 'id': 10, 'swimmable': False, 'interaction': 'openChest'},
-    {'type': 'block', 'walkable': False, 'id': 11, 'swimmable': False, 'interaction': 'craft'},
-    {'type': 'block', 'walkable': False, 'id': 12, 'swimmable': False, 'interaction': 'research'},
-    {'type': 'block', 'walkable': True, 'id': 13, 'swimmable': False},
-    {'type': 'block', 'walkable': False, 'id': 14, 'swimmable': False},
-    {'type': 'block', 'walkable': False, 'id': 15, 'swimmable': False},
-    {'type': 'block', 'walkable': False, 'id': 16, 'swimmable': False},
-    {'type': 'block', 'walkable': True, 'id': 17, 'swimmable': False},
-    {'type': 'block', 'walkable': False, 'id': 19, 'swimmable': 1.5},
-    {'type': 'block', 'walkable': True, 'id': 20, 'swimmable': False},
-    {'type': 'block', 'walkable': False, 'id': 21, 'swimmable': False},
-    {'type': 'block', 'walkable': True, 'id': 22, 'swimmable': False},
-    {'type': 'block', 'walkable': True, 'id': 26, 'swimmable': False},
-    {'type': 'enemy', 'id': 4, 'health': 20, 'damage': 0, 'speed': 0.5, 'behavior': 'passive', 'sight': 1, 'pause': 0.25, 'allowedBlocks': [0, 1]},
-    {'type': 'enemy', 'id': 5, 'health': 40, 'damage': 25, 'speed': 0.7, 'behavior': 'aggressive', 'sight': 5, 'pause': 0.23, 'allowedBlocks': [20, 22]},
-    {'type': 'enemy', 'id': 18, 'health': 80, 'damage': 60, 'speed': 0.8, 'behavior': 'aggressive', 'sight': 7, 'pause': 0.2, 'allowedBlocks': [17, 19]},
-    {'type': 'enemy', 'id': 23, 'health': 60, 'damage': 40, 'speed': 0.6, 'behavior': 'aggressive', 'sight': 5, 'pause': 0.23, 'allowedBlocks': [6]},
-    {'type': 'enemy', 'id': 24, 'health': 200, 'damage': 100, 'speed': 1, 'behavior': 'aggressive', 'sight': 9, 'pause': 0.18, 'allowedBlocks': [13, 3]},
-    {'type': 'grave', 'id': 25, 'health': 1, 'inventory': []},
-    {'type': 'player', 'id': 27, 'health': 100, 'damage': 15, 'speed': 1, 'sight': 5, 'pause': 0.18, 'allowedBlocks': [0, 6, 20, 17, 13, 1, 3, 9, 19, 22], 'swimmingSkill': 0, 'inventory': [], 'graves': {}, 'equipped': {'hand': None, 'back': None, 'head': None, 'feet': None}, 'chestInventory': []}
+    {'type': 'block', 'walkable': True, 'typeId': 0, 'swimmable': False},
+    {'type': 'block', 'walkable': False, 'typeId': 1, 'swimmable': 1},
+    {'type': 'block', 'walkable': False, 'typeId': 2, 'swimmable': False},
+    {'type': 'block', 'walkable': False, 'typeId': 3, 'swimmable': 2},
+    {'type': 'block', 'walkable': True, 'typeId': 6, 'swimmable': False},
+    {'type': 'block', 'walkable': False, 'typeId': 7, 'swimmable': False},
+    {'type': 'block', 'walkable': False, 'typeId': 8, 'swimmable': False},
+    {'type': 'block', 'walkable': True, 'typeId': 9, 'swimmable': False},
+    {'type': 'block', 'walkable': False, 'typeId': 10, 'swimmable': False, 'interaction': 'openChest'},
+    {'type': 'block', 'walkable': False, 'typeId': 11, 'swimmable': False, 'interaction': 'craft'},
+    {'type': 'block', 'walkable': False, 'typeId': 12, 'swimmable': False, 'interaction': 'research'},
+    {'type': 'block', 'walkable': True, 'typeId': 13, 'swimmable': False},
+    {'type': 'block', 'walkable': False, 'typeId': 14, 'swimmable': False},
+    {'type': 'block', 'walkable': False, 'typeId': 15, 'swimmable': False},
+    {'type': 'block', 'walkable': False, 'typeId': 16, 'swimmable': False},
+    {'type': 'block', 'walkable': True, 'typeId': 17, 'swimmable': False},
+    {'type': 'block', 'walkable': False, 'typeId': 19, 'swimmable': 1.5},
+    {'type': 'block', 'walkable': True, 'typeId': 20, 'swimmable': False},
+    {'type': 'block', 'walkable': False, 'typeId': 21, 'swimmable': False},
+    {'type': 'block', 'walkable': True, 'typeId': 22, 'swimmable': False},
+    {'type': 'block', 'walkable': True, 'typeId': 26, 'swimmable': False},
+    {'type': 'enemy', 'typeId': 4, 'health': 20, 'damage': 0, 'speed': 0.5, 'behavior': 'passive', 'sight': 1, 'pause': 0.25, 'allowedBlocks': [0, 1]},
+    {'type': 'enemy', 'typeId': 5, 'health': 40, 'damage': 25, 'speed': 0.7, 'behavior': 'aggressive', 'sight': 5, 'pause': 0.23, 'allowedBlocks': [20, 22]},
+    {'type': 'enemy', 'typeId': 18, 'health': 80, 'damage': 60, 'speed': 0.8, 'behavior': 'aggressive', 'sight': 7, 'pause': 0.2, 'allowedBlocks': [17, 19]},
+    {'type': 'enemy', 'typeId': 23, 'health': 60, 'damage': 40, 'speed': 0.6, 'behavior': 'aggressive', 'sight': 5, 'pause': 0.23, 'allowedBlocks': [6]},
+    {'type': 'enemy', 'typeId': 24, 'health': 200, 'damage': 100, 'speed': 1, 'behavior': 'aggressive', 'sight': 9, 'pause': 0.18, 'allowedBlocks': [13, 3]},
+    {'type': 'grave', 'typeId': 25, 'health': 1, 'inventory': []},
+    {'type': 'player', 'typeId': 27, 'health': 100, 'damage': 15, 'speed': 1, 'sight': 5, 'pause': 0.18, 'allowedBlocks': [0, 6, 20, 17, 13, 1, 3, 9, 19, 22], 'swimmingSkill': 0, 'inventory': [], 'graves': {}, 'equipped': {'hand': None, 'back': None, 'head': None, 'feet': None}, 'chestInventory': []}
 ]
 
 entitySpawn = {

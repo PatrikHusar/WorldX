@@ -19,9 +19,8 @@ class Client:
                 self.__client.connect(self.__adress)
                 connecting = False
             except:
-                pass
-            time.sleep(1)
-            print("waiting for server to start.")
+                time.sleep(1)
+                print("waiting for server to start.")
         print("connected to server, have fun!")
         self.input_thread = threading.Thread(target=self.__loop_input, daemon=True).start()
 
@@ -55,7 +54,7 @@ class Client:
         self.__running = False
         self.__client.close()
 
-client = Client(("192.168.0.118", 65432))
+client = Client(("0.0.0.0", 65432))
 
 def forward():
     client.sendMessage("forward")

@@ -34,7 +34,7 @@ class Player:
         self.dir = dir
 
     def canWalkOn(self, object):
-        if object['block']['id'] in self.player['allowedBlocks']:
+        if object['block']['typeId'] in self.player['allowedBlocks']:
             return True
         return False
 

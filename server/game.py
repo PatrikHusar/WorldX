@@ -65,7 +65,7 @@ class Game:
         for y in range(data.worldSize):
             for x in range(data.worldSize):
                 zoneName = self.world[y][x]['zone']
-                if self.world[y][x]['block']['id'] in data.spawnableBlockIds:
+                if self.world[y][x]['block']['typeId'] in data.spawnableBlockIds:
                     if zoneName in self.zonePositions:
                         self.zonePositions[zoneName].append((x, y))
                     else:
@@ -104,7 +104,6 @@ class Game:
             for object in row:
                 if object['entities']:
                     object['entities'] = {}
-    
     def getEntitiesList(self):
         entities = []
         for id in self.entitiesPos.keys():
@@ -115,12 +114,10 @@ class Game:
         for id in self.playersPos.keys():
             players.append(self.world[self.playersPos[id][1]][self.playersPos[id][0]]['entities'][id])
         return players
-
     def checkIfInsideWorld(self, startX, startY, width, height):
         if 0 <= startX <= data.worldSize - width and 0 <= startY <= data.worldSize - height:
             return True
         return False
-
     def updateEntityMovement(self, oldPos, newPos, id):
         oldX, oldY = int(oldPos[0]), int(oldPos[1])
         newX, newY = int(newPos[0]), int(newPos[1])
@@ -152,19 +149,20 @@ class Game:
                 return player
         return None
     def processClientData(self, playerMessage, adress):
-        if adress in self.adressToPassword:
+        if playerMessage.startswith('login:'):
+            if adress in self.adressToPassword:
+                return 'login failed, only 1 account on computer is allowed'
+            password = playerMessage[6:]
+            if self.getPlayerByPassword(password) == None:
+                self.createPlayer(password)
+            self.adressToPassword[adress] = password
+        elif adress in self.adressToPassword:
             if playerMessage.startswith(tuple(['forward', 'left', 'right', 'turnTo:'])):
                 self.getPlayerByPassword(self.adressToPassword[adress]).actions.append(playerMessage)
             else:
                 if playerMessage.startswith('getPos'):
                     player = self.getPlayerByPassword(self.adressToPassword[adress])
                     return (player.x, player.y)
-        else:
-            if playerMessage.startswith('login:'):
-                password = playerMessage[6:]
-                if self.getPlayerByPassword(password) == None:
-                    self.createPlayer(password)
-                self.adressToPassword[adress] = password
         return 'ok'
 #     def changeBlock(self, x, y, newId):
 #         if self.checkIfInsideWorld(x, y, 0, 0):

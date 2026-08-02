@@ -47,7 +47,7 @@ class Entity:
             self.aggressive()
 
     def canWalkOn(self, object):
-        if object['block']['id'] in self.entity['allowedBlocks']:
+        if object['block']['typeId'] in self.entity['allowedBlocks']:
             return True
         return False
 

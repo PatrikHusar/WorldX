@@ -58,7 +58,7 @@ class ServerHTML:
                 else:
                     groundId = None
                     if cell.get('block') and isinstance(cell['block'], dict):
-                        groundId = cell['block'].get('id')
+                        groundId = cell['block'].get('typeId', cell['block'].get('id'))
                     webRow.append({
                         "g": groundId, 
                         "zone": cell.get("zone", "unknown")
@@ -79,40 +79,44 @@ class ServerHTML:
         for entityObj in raw_players + raw_entities:
             try:
                 class_name = entityObj.__class__.__name__
-                unique_id = getattr(entityObj, 'unique_id', getattr(entityObj, 'id', 0))
+                unique_id = getattr(entityObj, 'playerId', getattr(entityObj, 'entityId', getattr(entityObj, 'id', 0)))
                 
                 type_id = unique_id
                 if hasattr(entityObj, 'entity') and isinstance(entityObj.entity, dict):
-                    type_id = entityObj.entity.get('id', type_id)
+                    # OPRAVA: Načítanie typeId pre entitu
+                    type_id = entityObj.entity.get('typeId', entityObj.entity.get('id', type_id))
+                elif hasattr(entityObj, 'typeId'):
+                    type_id = entityObj.typeId
                 elif hasattr(entityObj, 'id'):
                     type_id = entityObj.id
                 
                 if class_name == "Player" or entityObj in raw_players:
                     entity_type = "player"
-                    eSight = int(getattr(entityObj, 'sight', 5))
-                    type_id = 27 
+                    eSight = int(getattr(entityObj, 'player', {}).get('sight', getattr(entityObj, 'sight', 5)))
+                    type_id = 27
                 else:
                     entity_type = "entity"
                     eSight = getattr(entityObj, 'sight', 3)
                 
                 eDir = getattr(entityObj, 'dir', 'south')
-                eX = int(getattr(entityObj, 'x', 0))
-                eY = int(getattr(entityObj, 'y', 0))
+                
+                eX = float(getattr(entityObj, 'x', 0.0))
+                eY = float(getattr(entityObj, 'y', 0.0))
                 
                 if hasattr(entityObj, 'entity') and isinstance(entityObj.entity, dict):
-                    eHp = entityObj.entity.get('hp', 100)
+                    eHp = entityObj.entity.get('health', entityObj.entity.get('hp', 100))
                 else:
-                    eHp = getattr(entityObj, 'hp', 100)
+                    eHp = getattr(entityObj, 'health', getattr(entityObj, 'hp', 100))
 
                 asset_name = f"{type_id}{eDir}"
                 
                 entitiesList.append({
                     "id": unique_id,
                     "asset": asset_name,
-                    "type": entity_type,         
+                    "type": entity_type,
                     "hp": eHp,
-                    "x": float(eX),
-                    "y": float(eY),
+                    "x": eX,
+                    "y": eY,
                     "sight": int(eSight)
                 })
             except Exception:
@@ -193,9 +197,8 @@ class ServerHTML:
                 const minZoom = 0.4;
                 const maxZoom = 2.5;
                 
-                // Počiatočná pozícia kamery presne podľa tvojej požiadavky
-                let cameraC = 64.0; 
-                let cameraR = 40.0; 
+                let cameraC = 40.0; 
+                let cameraR = 64.0; 
                 let maxWorldSize = 180;
                 
                 let fullWorldMap = []; 
@@ -203,11 +206,14 @@ class ServerHTML:
                 
                 const discoveredTiles = {}; 
                 let selectedEntity = null;
+                const fogRevealTimeoutMs = 60000;
                 
                 let isDragging = false;
                 let startX, startY;
                 let startCameraC, startCameraR;
                 let totalDragDistance = 0;
+                
+                let lastTime = performance.now();
 
                 function resizeCanvas() {
                     canvas.width = canvasContainer.clientWidth;
@@ -222,11 +228,14 @@ class ServerHTML:
 
                 const assetsToLoad = ["26", "27", "27north", "27east", "27south", "27west"]; 
                 blocksConfig.forEach(block => {
-                    assetsToLoad.push(String(block.id));       
-                    assetsToLoad.push(block.id + "north");    
-                    assetsToLoad.push(block.id + "east");    
-                    assetsToLoad.push(block.id + "south");    
-                    assetsToLoad.push(block.id + "west");    
+                    const bId = (block.typeId !== undefined) ? block.typeId : block.id;
+                    if (bId !== undefined) {
+                        assetsToLoad.push(String(bId));       
+                        assetsToLoad.push(bId + "north");    
+                        assetsToLoad.push(bId + "east");    
+                        assetsToLoad.push(bId + "south");    
+                        assetsToLoad.push(bId + "west");
+                    }
                 });
 
                 const totalAssetsCount = assetsToLoad.length;
@@ -263,14 +272,22 @@ class ServerHTML:
 
                 function loadEntireWorld() {
                     fetch('/api/fullMap')
-                        .then(res => res.json())
+                        .then(res => {
+                            if (!res.ok) throw new Error("Server is restarting...");
+                            return res.json();
+                        })
                         .then(data => {
+                            for (let member in discoveredTiles) delete discoveredTiles[member];
+
                             fullWorldMap = data.map;
                             maxWorldSize = data.maxSize;
-                            loadEntitiesOnly();
                             
-                            startRenderLoop();
+                            loadEntitiesOnly();
+                            startRenderLoop(performance.now());
                             startPollingLoop();
+                        })
+                        .catch(err => {
+                            setTimeout(loadEntireWorld, 2000);
                         });
                 }
 
@@ -306,8 +323,8 @@ class ServerHTML:
 
                             const player = currentEntities.find(ent => ent.type === "player");
                             if (player) {
-                                const pX = Math.floor(player.x);
-                                const pY = Math.floor(player.y);
+                                const pX = Math.round(player.x);
+                                const pY = Math.round(player.y);
                                 const pSight = player.sight || 5;
                                 const now = Date.now();
 
@@ -324,22 +341,49 @@ class ServerHTML:
 
                 function startPollingLoop() {
                     fetch('/api/pollEntities')
-                        .then(res => res.json())
+                        .then(res => {
+                            if (!res.ok) throw new Error("Server nedostupný");
+                            return res.json();
+                        })
                         .then(() => {
                             loadEntitiesOnly();
                             startPollingLoop();
                         })
                         .catch(() => {
-                            setTimeout(startPollingLoop, 1000);
+                            setTimeout(loadEntireWorld, 2000);
                         });
                 }
 
-                function startRenderLoop() {
-                    renderMap();
+                function startRenderLoop(nowTime) {
+                    const dt = Math.min((nowTime - lastTime) / 1000, 0.1) || 0;
+                    lastTime = nowTime;
+
+                    renderMap(dt);
                     requestAnimationFrame(startRenderLoop);
                 }
 
-                function renderMap() {
+                function drawAnimatedEntity(ent, posX, posY, drawSize) {
+                    let img = textures[ent.asset];
+
+                    if (!img || img === "loading") {
+                        const baseAsset = ent.asset.replace(/(north|south|east|west)/g, '');
+                        img = textures[baseAsset];
+                    }
+
+                    if (img && img !== "loading") {
+                        ctx.drawImage(img, posX, posY, drawSize, drawSize);
+                    } else {
+                        ctx.beginPath();
+                        ctx.arc(posX + drawSize / 2, posY + drawSize / 2, drawSize * 0.4, 0, 2 * Math.PI);
+                        ctx.fillStyle = (ent.type === "player") ? "#4CAF50" : "#F44336";
+                        ctx.fill();
+                        ctx.lineWidth = 2;
+                        ctx.strokeStyle = "#FFFFFF";
+                        ctx.stroke();
+                    }
+                }
+
+                function renderMap(dt) {
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
                     const drawSize = baseBlockSize * zoomLevel;
 
@@ -349,23 +393,22 @@ class ServerHTML:
                     const startDrawX = Math.floor(cameraC);
                     const startDrawY = Math.floor(cameraR);
 
-                    // Plynulá animácia pohybu
+                    const lerpSpeed = 10.0;
                     currentEntities.forEach(ent => {
                         if (ent.targetX !== undefined && !isNaN(ent.targetX)) {
-                            ent.x += (ent.targetX - ent.x) * 0.25;
+                            ent.x += (ent.targetX - ent.x) * Math.min(dt * lerpSpeed, 1.0);
                         }
                         if (ent.targetY !== undefined && !isNaN(ent.targetY)) {
-                            ent.y += (ent.targetY - ent.y) * 0.25;
+                            ent.y += (ent.targetY - ent.y) * Math.min(dt * lerpSpeed, 1.0);
                         }
                     });
 
                     const player = currentEntities.find(ent => ent.type === "player");
-                    const pX = player ? Math.floor(player.x) : 0;
-                    const pY = player ? Math.floor(player.y) : 0;
-                    const pSight = player ? player.sight : 5;
+                    const pX = player ? Math.round(player.x) : 0;
+                    const pY = player ? Math.round(player.y) : 0;
+                    const pSight = player ? Number(player.sight ?? 5) : 5;
                     const now = Date.now();
 
-                    // 1. Vykreslenie podkladu (blokov)
                     for (let r = -1; r < rowsToDraw; r++) {
                         for (let c = -1; c < colsToDraw; c++) {
                             const wx = startDrawX + c;
@@ -376,18 +419,57 @@ class ServerHTML:
                             const posX = (wx - cameraC) * drawSize;
                             const posY = (wy - cameraR) * drawSize;
 
-                            const inPlayerSight = (Math.abs(wx - pX) <= pSight && Math.abs(wy - pY) <= pSight);
-                            const lastSeenTime = discoveredTiles[`${wx},${wy}`] || 0;
-                            const isWithinMinute = (now - lastSeenTime <= 60000);
-
-                            if (inPlayerSight || isWithinMinute) {
-                                if (fullWorldMap[wy] && fullWorldMap[wy][wx]) {
-                                    const cell = fullWorldMap[wy][wx];
-                                    if (cell.g !== null && textures[cell.g] && textures[cell.g] !== "loading") {
-                                        ctx.drawImage(textures[cell.g], posX, posY, drawSize, drawSize);
-                                    }
+                            if (fullWorldMap[wy] && fullWorldMap[wy][wx]) {
+                                const cell = fullWorldMap[wy][wx];
+                                if (cell.g !== null && textures[cell.g] && textures[cell.g] !== "loading") {
+                                    ctx.drawImage(textures[cell.g], posX, posY, drawSize, drawSize);
                                 }
-                            } else {
+                            }
+                        }
+                    }
+
+                    const playersList = currentEntities.filter(e => e.type === "player");
+                    playersList.forEach(ent => {
+                        const posX = (ent.x - cameraC) * drawSize;
+                        const posY = (ent.y - cameraR) * drawSize;
+
+                        if (posX + drawSize >= 0 && posY + drawSize >= 0 && posX <= canvas.width && posY <= canvas.height) {
+                            drawAnimatedEntity(ent, posX, posY, drawSize);
+                        }
+                    });
+
+                    const otherEntitiesList = currentEntities.filter(e => e.type !== "player");
+                    otherEntitiesList.forEach(ent => {
+                        const posX = (ent.x - cameraC) * drawSize;
+                        const posY = (ent.y - cameraR) * drawSize;
+
+                        if (posX + drawSize >= 0 && posY + drawSize >= 0 && posX <= canvas.width && posY <= canvas.height) {
+                            const entX = Math.round(ent.x);
+                            const entY = Math.round(ent.y);
+                            const inSight = (entX >= pX - pSight && entX <= pX + pSight && entY >= pY - pSight && entY <= pY + pSight);
+                            const seenRecent = (now - (discoveredTiles[`${entX},${entY}`] || 0) <= fogRevealTimeoutMs);
+
+                            if (inSight || seenRecent) {
+                                drawAnimatedEntity(ent, posX, posY, drawSize);
+                            }
+                        }
+                    });
+
+                    for (let r = -1; r < rowsToDraw; r++) {
+                        for (let c = -1; c < colsToDraw; c++) {
+                            const wx = startDrawX + c;
+                            const wy = startDrawY + r;
+                            
+                            if (wx < 0 || wx >= maxWorldSize || wy < 0 || wy >= maxWorldSize) continue;
+                            
+                            const posX = (wx - cameraC) * drawSize;
+                            const posY = (wy - cameraR) * drawSize;
+
+                            const inPlayerSight = (wx >= pX - pSight && wx <= pX + pSight && wy >= pY - pSight && wy <= pY + pSight);
+                            const lastSeenTime = discoveredTiles[`${wx},${wy}`] || 0;
+                            const isVisible = inPlayerSight || (now - lastSeenTime <= fogRevealTimeoutMs);
+
+                            if (!isVisible) {
                                 if (textures["26"] && textures["26"] !== "loading") {
                                     ctx.drawImage(textures["26"], posX, posY, drawSize, drawSize);
                                 } else {
@@ -397,41 +479,6 @@ class ServerHTML:
                             }
                         }
                     }
-
-                    // 2. Vykreslenie hráčov a entít
-                    currentEntities.forEach(ent => {
-                        const posX = (ent.x - cameraC) * drawSize;
-                        const posY = (ent.y - cameraR) * drawSize;
-
-                        if (posX + drawSize < 0 || posY + drawSize < 0 || posX > canvas.width || posY > canvas.height) return;
-
-                        const entX = Math.floor(ent.x);
-                        const entY = Math.floor(ent.y);
-                        const inSight = (Math.abs(entX - pX) <= pSight && Math.abs(entY - pY) <= pSight);
-                        const seenRecent = (now - (discoveredTiles[`${entX},${entY}`] || 0) <= 60000);
-
-                        if (inSight || seenRecent || ent.type === "player") {
-                            let img = textures[ent.asset];
-                            
-                            if (!img || img === "loading") {
-                                const baseAsset = ent.asset.replace(/(north|south|east|west)/g, '');
-                                img = textures[baseAsset];
-                            }
-
-                            if (img && img !== "loading") {
-                                ctx.drawImage(img, posX, posY, drawSize, drawSize);
-                            } else {
-                                // FALLBACK: Ak chýba obrázok v static/, nakreslíme výrazný kruh
-                                ctx.beginPath();
-                                ctx.arc(posX + drawSize / 2, posY + drawSize / 2, drawSize * 0.4, 0, 2 * Math.PI);
-                                ctx.fillStyle = (ent.type === "player") ? "#4CAF50" : "#F44336";
-                                ctx.fill();
-                                ctx.lineWidth = 2;
-                                ctx.strokeStyle = "#FFFFFF";
-                                ctx.stroke();
-                            }
-                        }
-                    });
                 }
 
                 canvas.addEventListener('mousemove', function(e) {
