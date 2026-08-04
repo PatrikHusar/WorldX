@@ -419,7 +419,7 @@ class ServerHTML:
                     container.innerHTML = '';
 
                     if (players.length === 0) {
-                        container.innerHTML = '<div style="color: #aaa; font-style: italic; font-size: 13px;">No players online</div>';
+                        container.innerHTML = '<div style="color: #aaa; font-style: italic; font-size: 13px;">No players</div>';
                         return;
                     }
 

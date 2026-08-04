@@ -1,5 +1,5 @@
-from client import login, is_pressed, turn_right, turn_left, forward, turn_towards, get_position
-login('patko')
+from client import is_pressed, turn_right, turn_left, forward, turn_towards, get_position
+
 while True:
     if is_pressed('w'):
         forward()

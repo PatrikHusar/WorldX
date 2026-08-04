@@ -1,8 +1,21 @@
 import socket
 import threading
 import time
+import uuid
+import os
 from blessed import Terminal
 import json
+
+def getAccountPasscode():
+    filename = os.path.join(os.path.dirname(os.path.abspath(__file__)), "accountPassword.txt")
+    if os.path.exists(filename):
+        with open(filename, "r") as f:
+            return f.read().strip()
+    else:
+        id = str(uuid.uuid4())
+        with open(filename, "w") as f:
+            f.write(id)
+        return id
 
 class Client:
     def __init__(self, adress) -> None:
@@ -22,6 +35,7 @@ class Client:
                 time.sleep(1)
                 print("waiting for server to start.")
         print("connected to server")
+        self.sendMessage(f"login:{getAccountPasscode()}", True)
         self.input_thread = threading.Thread(target=self.__loop_input, daemon=True).start()
 
     def __loop_input(self):
@@ -70,9 +84,6 @@ def turn_right():
 
 def turn_towards(dir):
     client.sendMessage(f"turnTo:{dir}")
-
-def login(password):
-    return client.sendMessage(f"login:{password}", True)
 
 def get_position():
     return client.sendMessage('getPos')
