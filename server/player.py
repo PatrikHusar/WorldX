@@ -89,6 +89,8 @@ class Player:
         self.game.updateEntityMovement((oldX, oldY), (newX, newY), self.playerId)
 
     def doAction(self, currentTime):
+        if currentTime - self.time < self.player['pause'] or self.isMoving:
+            return
         if self.actions:
             act = self.actions.pop(0)
             if act == 'forward':
