@@ -27,7 +27,7 @@ class Game:
             self.worldSaver.saveData(self.world)
         self.playerSaver = DataSaving(data.playersFilePath)
         self.restorePlayers()
-        self.TCPserver = Server(("0.0.0.0", 65432), self.processClientData)
+        self.TCPserver = Server(("0.0.0.0", 5001), self.processClientData)
         self.webServer = ServerHTML(host="0.0.0.0", port=5000, game=self)
         self.initZonePositions()
         self.spawnEntities()

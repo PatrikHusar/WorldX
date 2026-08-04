@@ -83,7 +83,6 @@ class ServerHTML:
                 
                 type_id = unique_id
                 if hasattr(entityObj, 'entity') and isinstance(entityObj.entity, dict):
-                    # OPRAVA: Načítanie typeId pre entitu
                     type_id = entityObj.entity.get('typeId', entityObj.entity.get('id', type_id))
                 elif hasattr(entityObj, 'typeId'):
                     type_id = entityObj.typeId
@@ -108,6 +107,16 @@ class ServerHTML:
                 else:
                     eHp = getattr(entityObj, 'health', getattr(entityObj, 'hp', 100))
 
+                if hasattr(entityObj, 'entity') and isinstance(entityObj.entity, dict):
+                    eEquipped = entityObj.entity.get('equipped', {})
+                else:
+                    eEquipped = getattr(entityObj, 'equipped', {})
+
+                if hasattr(entityObj, 'entity') and isinstance(entityObj.entity, dict):
+                    eInventory = entityObj.entity.get('inventory', [])
+                else:
+                    eInventory = getattr(entityObj, 'inventory', [])
+
                 asset_name = f"{type_id}{eDir}"
                 
                 entitiesList.append({
@@ -115,6 +124,8 @@ class ServerHTML:
                     "asset": asset_name,
                     "type": entity_type,
                     "hp": eHp,
+                    "equipped": eEquipped,
+                    "inventory": eInventory,
                     "x": eX,
                     "y": eY,
                     "sight": int(eSight)
@@ -135,42 +146,76 @@ class ServerHTML:
                 html, body { width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; background: #222; color: white; font-family: Arial, sans-serif; user-select: none; }
                 body { display: flex; flex-direction: column; }
                 
-                .control-panel { display: flex; justify-content: center; align-items: center; gap: 20px; padding: 8px; background: #1a1a1a; flex-shrink: 0; }
-                #coordinates { font-weight: bold; color: #4CAF50; font-size: 16px; font-family: monospace; }
-                .teleport-container input { padding: 4px; font-size: 13px; border: 1px solid #666; border-radius: 4px; background: #333; color: white; text-align: center; width: 100px; }
-                .teleport-container button { padding: 4px 10px; font-size: 13px; background: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
-                .teleport-container button:hover { background: #0b7dda; }
-                
-                .main-layout { display: flex; flex: 1; position: relative; width: 100%; height: calc(100% - 45px); padding: 5px; gap: 10px; }
-                #canvasContainer { flex: 1; height: 100%; position: relative; display: flex; justify-content: center; align-items: center; background: #000; border: 2px solid #555; overflow: hidden; }
+                .control-panel { display: flex; justify-content: center; align-items: center; padding: 10px; background: #1a1a1a; flex-shrink: 0; }
+                .control-panel h1 { margin: 0; font-size: 20px; color: #4CAF50; letter-spacing: 1px; }
+
+                .main-layout { position: relative; width: 100%; height: calc(100% - 45px); padding: 5px; }
+                #canvasContainer { width: 100%; height: 100%; position: relative; display: flex; justify-content: center; align-items: center; background: #000; border: 2px solid #555; overflow: hidden; }
                 #gameCanvas { cursor: grab; display: block; }
                 #gameCanvas:active { cursor: grabbing; }
                 
+                #coordinates { 
+                    position: absolute;
+                    top: 15px;
+                    left: 15px;
+                    z-index: 10;
+                    font-weight: bold; 
+                    color: #4CAF50; 
+                    font-size: 15px; 
+                    font-family: monospace; 
+                    background: #000000;
+                    padding: 5px 10px;
+                    border-radius: 4px;
+                    border: 1px solid #4CAF50;
+                }
+
+                #playersPanel {
+                    position: absolute;
+                    top: 55px;
+                    left: 15px;
+                    z-index: 10;
+                    background: rgba(30, 30, 30, 0.9);
+                    border: 2px solid #4CAF50;
+                    border-radius: 6px;
+                    padding: 12px;
+                    width: 220px;
+                    max-height: calc(100% - 80px);
+                    overflow-y: auto;
+                    box-shadow: 0px 4px 12px rgba(0,0,0,0.6);
+                    backdrop-filter: blur(4px);
+                }
+                #playersPanel h3 { margin: 0 0 10px 0; color: #4CAF50; font-size: 16px; border-bottom: 1px solid #555; padding-bottom: 5px; }
+                .player-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; background: rgba(255, 255, 255, 0.05); padding: 6px 8px; border-radius: 4px; }
+                .player-item span { font-weight: bold; font-size: 13px; color: #fff; }
+                .teleport-btn { padding: 4px 8px; font-size: 12px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+                .teleport-btn:hover { background: #388E3C; }
+
                 #infoPanel { 
-                    background: #333; 
+                    position: absolute;
+                    top: 15px;
+                    right: 15px;
+                    z-index: 10;
+                    background: rgba(30, 30, 30, 0.9); 
                     border: 2px solid #4CAF50; 
                     border-radius: 6px; 
                     padding: 15px; 
-                    width: 220px; 
+                    width: 250px; 
                     text-align: left; 
                     font-size: 14px; 
-                    box-shadow: 0px 2px 8px rgba(0,0,0,0.4); 
-                    flex-shrink: 0;
+                    box-shadow: 0px 4px 12px rgba(0,0,0,0.6); 
+                    backdrop-filter: blur(4px);
                 }
                 #infoPanel h3 { margin: 0 0 10px 0; color: #4CAF50; font-size: 16px; border-bottom: 1px solid #555; padding-bottom: 5px; }
-                .info-row { display: flex; justify-content: space-between; margin-bottom: 5px; }
+                .info-row { display: flex; flex-direction: column; margin-bottom: 8px; }
+                .info-row-inline { display: flex; justify-content: space-between; margin-bottom: 5px; }
                 .info-label { color: #aaa; font-weight: bold; }
-                .info-value { color: #fff; }
+                .info-value { color: #fff; word-break: break-word; }
                 .hidden { display: none !important; }
             </style>
         </head>
         <body>
             <div class="control-panel">
-                <div id="coordinates">x: 0, y: 0</div>
-                <div class="teleport-container">
-                    <input type="text" id="teleportPosition" placeholder="x, y" onkeydown="checkEnter(event)">
-                    <button onclick="teleport()">Teleport</button>
-                </div>
+                <h1>WorldX</h1>
             </div>
             
             <div class="main-layout">
@@ -178,12 +223,30 @@ class ServerHTML:
                     <canvas id="gameCanvas"></canvas>
                 </div>
                 
+                <div id="coordinates">x: 0, y: 0</div>
+
+                <div id="playersPanel">
+                    <h3>Players List</h3>
+                    <div id="playersListContainer"></div>
+                </div>
+                
                 <div id="infoPanel" class="hidden">
-                    <h3>Detail entity</h3>
-                    <div class="info-row"><span class="info-label">Pozícia:</span><span class="info-value" id="infoPos">x: 0, y: 0</span></div>
-                    <div class="info-row"><span class="info-label">ID / Typ:</span><span class="info-value" id="infoType">N/A</span></div>
-                    <div class="info-row"><span class="info-label">HP:</span><span class="info-value" id="infoHp">N/A</span></div>
-                    <div class="info-row"><span class="info-label">Zóna:</span><span class="info-value" id="infoZone">N/A</span></div>
+                    <h3 id="infoTitle">Entity Details</h3>
+                    
+                    <div class="info-row-inline"><span class="info-label">HP:</span><span class="info-value" id="infoHp">N/A</span></div>
+                    
+                    <div id="zoneRow" class="info-row-inline"><span class="info-label">Zone:</span><span class="info-value" id="infoZone">N/A</span></div>
+                    
+                    <div id="playerOnlyStats">
+                        <div class="info-row">
+                            <span class="info-label">Equipped:</span>
+                            <span class="info-value" id="infoEquipped">Nothing</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Inventory:</span>
+                            <span class="info-value" id="infoInventory">Empty</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -205,7 +268,11 @@ class ServerHTML:
                 let currentEntities = [];
                 
                 const discoveredTiles = {}; 
+                let currentlyVisibleTiles = new Set();
+
                 let selectedEntity = null;
+                let followedPlayerId = null;
+
                 const fogRevealTimeoutMs = 60000;
                 
                 let isDragging = false;
@@ -306,6 +373,8 @@ class ServerHTML:
                                     existing.targetY = Number(nEnt.y);
                                     existing.asset = nEnt.asset;
                                     existing.hp = nEnt.hp;
+                                    existing.equipped = nEnt.equipped;
+                                    existing.inventory = nEnt.inventory;
                                     existing.sight = nEnt.sight;
                                     existing.type = nEnt.type;
                                 } else {
@@ -321,28 +390,78 @@ class ServerHTML:
 
                             currentEntities = currentEntities.filter(e => updatedIds.has(e.id));
 
-                            const player = currentEntities.find(ent => ent.type === "player");
-                            if (player) {
+                            const playersList = currentEntities.filter(ent => ent.type === "player");
+                            const now = Date.now();
+
+                            currentlyVisibleTiles.clear();
+
+                            playersList.forEach(player => {
                                 const pX = Math.round(player.x);
                                 const pY = Math.round(player.y);
                                 const pSight = player.sight || 5;
-                                const now = Date.now();
 
                                 for (let dy = -pSight; dy <= pSight; dy++) {
                                     for (let dx = -pSight; dx <= pSight; dx++) {
-                                        discoveredTiles[`${pX + dx},${pY + dy}`] = now;
+                                        const key = `${pX + dx},${pY + dy}`;
+                                        currentlyVisibleTiles.add(key);
+                                        discoveredTiles[key] = now;
                                     }
                                 }
-                            }
+                            });
                             
                             updateInfoPanel();
+                            renderPlayersList(playersList);
                         });
+                }
+
+                function renderPlayersList(players) {
+                    const container = document.getElementById('playersListContainer');
+                    container.innerHTML = '';
+
+                    if (players.length === 0) {
+                        container.innerHTML = '<div style="color: #aaa; font-style: italic; font-size: 13px;">No players online</div>';
+                        return;
+                    }
+
+                    players.forEach(p => {
+                        const item = document.createElement('div');
+                        item.className = 'player-item';
+
+                        const label = document.createElement('span');
+                        label.innerText = `Player ${p.id}`;
+
+                        const btn = document.createElement('button');
+                        btn.className = 'teleport-btn';
+                        btn.innerText = 'Teleport';
+                        btn.onclick = () => teleportToPlayer(p.id);
+
+                        item.appendChild(label);
+                        item.appendChild(btn);
+                        container.appendChild(item);
+                    });
+                }
+
+                function centerCameraOn(x, y) {
+                    const drawSize = baseBlockSize * zoomLevel;
+                    const visibleCols = canvas.width / drawSize;
+                    const visibleRows = canvas.height / drawSize;
+
+                    cameraC = Math.max(0, Math.min(x - (visibleCols / 2), maxWorldSize - 1));
+                    cameraR = Math.max(0, Math.min(y - (visibleRows / 2), maxWorldSize - 1));
+                }
+
+                function teleportToPlayer(playerId) {
+                    followedPlayerId = playerId;
+                    const p = currentEntities.find(e => e.id === playerId);
+                    if (p) {
+                        centerCameraOn(p.x, p.y);
+                    }
                 }
 
                 function startPollingLoop() {
                     fetch('/api/pollEntities')
                         .then(res => {
-                            if (!res.ok) throw new Error("Server nedostupný");
+                            if (!res.ok) throw new Error("Server unavailable");
                             return res.json();
                         })
                         .then(() => {
@@ -387,12 +506,6 @@ class ServerHTML:
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
                     const drawSize = baseBlockSize * zoomLevel;
 
-                    const colsToDraw = Math.ceil(canvas.width / drawSize) + 2;
-                    const rowsToDraw = Math.ceil(canvas.height / drawSize) + 2;
-                    
-                    const startDrawX = Math.floor(cameraC);
-                    const startDrawY = Math.floor(cameraR);
-
                     const lerpSpeed = 10.0;
                     currentEntities.forEach(ent => {
                         if (ent.targetX !== undefined && !isNaN(ent.targetX)) {
@@ -403,10 +516,19 @@ class ServerHTML:
                         }
                     });
 
-                    const player = currentEntities.find(ent => ent.type === "player");
-                    const pX = player ? Math.round(player.x) : 0;
-                    const pY = player ? Math.round(player.y) : 0;
-                    const pSight = player ? Number(player.sight ?? 5) : 5;
+                    if (followedPlayerId !== null && !isDragging) {
+                        const fPlayer = currentEntities.find(e => e.id === followedPlayerId);
+                        if (fPlayer) {
+                            centerCameraOn(fPlayer.x, fPlayer.y);
+                        }
+                    }
+
+                    const colsToDraw = Math.ceil(canvas.width / drawSize) + 2;
+                    const rowsToDraw = Math.ceil(canvas.height / drawSize) + 2;
+                    
+                    const startDrawX = Math.floor(cameraC);
+                    const startDrawY = Math.floor(cameraR);
+
                     const now = Date.now();
 
                     for (let r = -1; r < rowsToDraw; r++) {
@@ -446,8 +568,10 @@ class ServerHTML:
                         if (posX + drawSize >= 0 && posY + drawSize >= 0 && posX <= canvas.width && posY <= canvas.height) {
                             const entX = Math.round(ent.x);
                             const entY = Math.round(ent.y);
-                            const inSight = (entX >= pX - pSight && entX <= pX + pSight && entY >= pY - pSight && entY <= pY + pSight);
-                            const seenRecent = (now - (discoveredTiles[`${entX},${entY}`] || 0) <= fogRevealTimeoutMs);
+                            const key = `${entX},${entY}`;
+                            
+                            const inSight = currentlyVisibleTiles.has(key);
+                            const seenRecent = (now - (discoveredTiles[key] || 0) <= fogRevealTimeoutMs);
 
                             if (inSight || seenRecent) {
                                 drawAnimatedEntity(ent, posX, posY, drawSize);
@@ -465,8 +589,9 @@ class ServerHTML:
                             const posX = (wx - cameraC) * drawSize;
                             const posY = (wy - cameraR) * drawSize;
 
-                            const inPlayerSight = (wx >= pX - pSight && wx <= pX + pSight && wy >= pY - pSight && wy <= pY + pSight);
-                            const lastSeenTime = discoveredTiles[`${wx},${wy}`] || 0;
+                            const key = `${wx},${wy}`;
+                            const inPlayerSight = currentlyVisibleTiles.has(key);
+                            const lastSeenTime = discoveredTiles[key] || 0;
                             const isVisible = inPlayerSight || (now - lastSeenTime <= fogRevealTimeoutMs);
 
                             if (!isVisible) {
@@ -514,6 +639,10 @@ class ServerHTML:
                     const dy = e.clientY - startY;
                     
                     totalDragDistance += Math.abs(dx) + Math.abs(dy);
+
+                    if (totalDragDistance > 5) {
+                        followedPlayerId = null;
+                    }
                     
                     let newC = startCameraC - (dx / drawSize);
                     let newR = startCameraR - (dy / drawSize);
@@ -579,18 +708,50 @@ class ServerHTML:
 
                 function showEntityDetails(ent) {
                     const infoPanel = document.getElementById('infoPanel');
-                    document.getElementById('infoPos').innerText = `x: ${Math.floor(ent.x)}, y: ${Math.floor(ent.y)}`;
-                    
-                    const ex = Math.floor(ent.x);
-                    const ey = Math.floor(ent.y);
-                    let zoneName = "UNKNOWN";
-                    if (fullWorldMap[ey] && fullWorldMap[ey][ex]) {
-                        zoneName = fullWorldMap[ey][ex].zone || "UNKNOWN";
-                    }
-                    
-                    document.getElementById('infoZone').innerText = zoneName.toUpperCase();
-                    document.getElementById('infoType').innerText = `ID: ${ent.id} (${ent.type})`;
+                    const zoneRow = document.getElementById('zoneRow');
+                    const playerStats = document.getElementById('playerOnlyStats');
+                    const infoTitle = document.getElementById('infoTitle');
+
                     document.getElementById('infoHp').innerText = ent.hp;
+
+                    if (ent.type === 'player') {
+                        infoTitle.innerText = `Player ${ent.id}`;
+                        zoneRow.classList.add('hidden');
+                        playerStats.classList.remove('hidden');
+
+                        let eqText = "Nothing";
+                        if (ent.equipped && typeof ent.equipped === 'object' && Object.keys(ent.equipped).length > 0) {
+                            if (Array.isArray(ent.equipped)) {
+                                eqText = ent.equipped.join(', ');
+                            } else {
+                                eqText = Object.entries(ent.equipped).map(([slot, item]) => `${slot}: ${item}`).join(', ');
+                            }
+                        }
+                        document.getElementById('infoEquipped').innerText = eqText;
+
+                        let invText = "Empty";
+                        if (ent.inventory && Array.isArray(ent.inventory) && ent.inventory.length > 0) {
+                            invText = ent.inventory.join(', ');
+                        } else if (ent.inventory && typeof ent.inventory === 'object' && Object.keys(ent.inventory).length > 0) {
+                            invText = Object.values(ent.inventory).join(', ');
+                        }
+                        document.getElementById('infoInventory').innerText = invText;
+
+                    } else {
+                        infoTitle.innerText = "Entity Details";
+                        zoneRow.classList.remove('hidden');
+                        playerStats.classList.add('hidden');
+
+                        const ex = Math.floor(ent.x);
+                        const ey = Math.floor(ent.y);
+                        let zoneName = "UNKNOWN";
+                        if (fullWorldMap[ey] && fullWorldMap[ey][ex]) {
+                            zoneName = fullWorldMap[ey][ex].zone || "UNKNOWN";
+                        }
+                        
+                        document.getElementById('infoZone').innerText = zoneName.toUpperCase();
+                    }
+
                     infoPanel.classList.remove('hidden');
                 }
 
@@ -603,21 +764,6 @@ class ServerHTML:
                         selectedEntity = null;
                         document.getElementById('infoPanel').classList.add('hidden');
                     }
-                }
-
-                function checkEnter(e) { if (e.key === 'Enter') teleport(); }
-                
-                function teleport() {
-                    const input = document.getElementById('teleportPosition').value; 
-                    const parts = input.split(','); 
-                    if (parts.length !== 2) return;
-                    
-                    let targetX = parseInt(parts[0].trim()); 
-                    let targetY = parseInt(parts[1].trim()); 
-                    if (isNaN(targetX) || isNaN(targetY)) return;
-                    
-                    cameraC = Math.max(0, Math.min(targetX, maxWorldSize - 1)); 
-                    cameraR = Math.max(0, Math.min(targetY, maxWorldSize - 1)); 
                 }
             </script>
         </body>
