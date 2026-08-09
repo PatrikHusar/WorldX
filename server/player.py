@@ -34,7 +34,12 @@ class Player:
         self.dir = dir
 
     def canWalkOn(self, object):
-        if object['block']['typeId'] in self.player['allowedBlocks']:
+        noEntities = True
+        for entity in object['entities'].values():
+            if not entity.__class__.__name__ == 'Player':
+                noEntities = False
+                break
+        if object['block']['typeId'] in self.player['allowedBlocks'] and noEntities == True:
             return True
         return False
 

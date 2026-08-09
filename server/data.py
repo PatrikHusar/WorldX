@@ -26,22 +26,21 @@ maxEnemiesInZone = {
     'swamp': 30,
     'volcano': 20
 }
-# maxChestInZone = {
-#     'forest': 30,
-#     'desert': 15,
-#     'tundra': 15,
-#     'swamp': 15,
-#     'volcano': 15
-# }
+maxChestInZone = {
+    'forest': 40,
+    'desert': 20,
+    'tundra': 35,
+    'swamp': 35,
+    'volcano': 20
+}
 
-# chestsAmount = {
-    # 'forest': 0,
-    # 'desert': 0,
-    # 'tundra': 0,
-    # 'swamp': 0,
-    # 'volcano': 0
-# }
-
+chestDrops = {
+    'forest': [29],
+    'desert': [0],
+    'tundra': [0],
+    'swamp': [0],
+    'volcano': [0]
+}
 
 objects = [
     {'type': 'block', 'walkable': True, 'typeId': 0, 'swimmable': False},
@@ -65,13 +64,19 @@ objects = [
     {'type': 'block', 'walkable': False, 'typeId': 21, 'swimmable': False},
     {'type': 'block', 'walkable': True, 'typeId': 22, 'swimmable': False},
     {'type': 'block', 'walkable': True, 'typeId': 26, 'swimmable': False},
-    {'type': 'enemy', 'typeId': 4, 'health': 20, 'damage': 0, 'speed': 0.5, 'behavior': 'passive', 'sight': 1, 'pause': 0.25, 'allowedBlocks': [0, 1]},
-    {'type': 'enemy', 'typeId': 5, 'health': 40, 'damage': 25, 'speed': 0.7, 'behavior': 'aggressive', 'sight': 5, 'pause': 0.23, 'allowedBlocks': [20, 22]},
-    {'type': 'enemy', 'typeId': 18, 'health': 80, 'damage': 60, 'speed': 0.8, 'behavior': 'aggressive', 'sight': 7, 'pause': 0.2, 'allowedBlocks': [17, 19]},
-    {'type': 'enemy', 'typeId': 23, 'health': 60, 'damage': 40, 'speed': 0.6, 'behavior': 'aggressive', 'sight': 5, 'pause': 0.23, 'allowedBlocks': [6]},
-    {'type': 'enemy', 'typeId': 24, 'health': 200, 'damage': 100, 'speed': 1, 'behavior': 'aggressive', 'sight': 9, 'pause': 0.18, 'allowedBlocks': [13, 3]},
-    {'type': 'grave', 'typeId': 25, 'inventory': []},
-    {'type': 'player', 'typeId': 27, 'health': 100, 'damage': 15, 'speed': 1, 'sight': 5, 'pause': 0.18, 'allowedBlocks': [0, 6, 20, 17, 13, 1, 3, 9, 19, 22], 'swimmingSkill': 0, 'inventory': [], 'graves': {}, 'equipped': {'hand': None, 'back': None, 'head': None, 'feet': None}, 'chestInventory': []}
+    {'type': 'enemy', 'typeId': 4, 'health': 20, 'damage': 0, 'speed': 0.5, 'behavior': 'passive', 'sight': 1, 'pause': 0.25, 'allowedBlocks': [0, 1], 'drops': [28]},
+    {'type': 'enemy', 'typeId': 5, 'health': 40, 'damage': 25, 'speed': 0.7, 'behavior': 'aggressive', 'sight': 5, 'pause': 0.23, 'allowedBlocks': [20, 22], 'drops': []},
+    {'type': 'enemy', 'typeId': 18, 'health': 80, 'damage': 50, 'speed': 0.8, 'behavior': 'aggressive', 'sight': 7, 'pause': 0.2, 'allowedBlocks': [17, 19], 'drops': []},
+    {'type': 'enemy', 'typeId': 23, 'health': 60, 'damage': 40, 'speed': 0.6, 'behavior': 'aggressive', 'sight': 5, 'pause': 0.23, 'allowedBlocks': [6], 'drops': []},
+    {'type': 'enemy', 'typeId': 24, 'health': 200, 'damage': 70, 'speed': 1, 'behavior': 'aggressive', 'sight': 9, 'pause': 0.18, 'allowedBlocks': [13, 3], 'drops': []},
+    {'type': 'grave', 'typeId': 25, 'drops': []},
+    {'type': 'player', 'typeId': 27, 'health': 100, 'damage': 15, 'speed': 1, 'sight': 5, 'pause': 0.18, 'regeneration': 2, 'allowedBlocks': [0, 6, 20, 17, 13, 1, 3, 9, 19, 22], 'swimmingSkill': 0, 'inventory': [], 'graves': {}, 'equipped': {'head': None, 'back': None, 'hand': None, 'feet': None}, 'chestInventory': []},
+    {'type': 'chest', 'typeId': 30, 'drops': []}
+]
+
+items = [
+    {'name': 'Anasite', 'recipe': None, 'typeId': 28, 'boosts': {}, 'bodySlot': None},
+    {'name': 'Sylvanite', 'recipe': None, 'typeId': 29, 'boosts': {}, 'bodySlot': None}
 ]
 
 entitySpawn = {
@@ -117,3 +122,4 @@ zones = [
 # 24: 'golem',
 # 25: 'grave',
 # 26: 'cloud'
+# 30: 'treasureChest'

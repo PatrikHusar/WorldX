@@ -8,6 +8,7 @@ from threading import Thread
 from entity import Entity
 import time
 import random
+from chest import Chest
 
 class Game:
     def __init__(self):
@@ -15,6 +16,7 @@ class Game:
         self.zonePositions = {}
         self.entitiesPos = {}
         self.playersPos = {}
+        self.chestsPos = {}
         self.idCounter = 0
         self.adressToPassword = {}
         self.worldSaver = DataSaving(data.worldFilePath)
@@ -31,9 +33,20 @@ class Game:
         self.webServer = ServerHTML(host="0.0.0.0", port=5000, game=self)
         self.initZonePositions()
         self.spawnEntities()
+        self.spawnChests()
         Thread(target=self.main, daemon=True).start()
         self.webServer.startServer()
     
+    def spawnChests(self):
+        for zone in data.entitySpawn.keys():
+            for i in range(data.maxChestInZone[zone]):
+                self.chestsPos[self.idCounter] = self.getRandomPos(zone)
+                details = data.getObjectInfo(30)
+                details['drops'].append(random.choice(data.chestDrops[zone]))
+                chest = Chest(self.chestsPos[self.idCounter], details, self.idCounter)
+                self.world[chest.y][chest.x]['entities'][self.idCounter] = chest
+                self.idCounter += 1
+
     def createPlayer(self, password, restore=False):
         player = Player(data.spawnPos, data.getObjectInfo(27), self.idCounter, self, password)
         self.idCounter += 1
@@ -114,6 +127,11 @@ class Game:
         for id in self.playersPos.keys():
             players.append(self.world[self.playersPos[id][1]][self.playersPos[id][0]]['entities'][id])
         return players
+    def getChestsList(self):
+        chests = []
+        for id in self.chestsPos.keys():
+            chests.append(self.world[self.chestsPos[id][1]][self.chestsPos[id][0]]['entities'][id])
+        return chests
     def checkIfInsideWorld(self, startX, startY, width, height):
         if 0 <= startX <= data.worldSize - width and 0 <= startY <= data.worldSize - height:
             return True
@@ -158,7 +176,11 @@ class Game:
             self.adressToPassword[adress] = password
             return 'logged in to the server, have fun!'
         elif playerMessage == 'disconnect':
-            del self.adressToPassword[adress]
+            try:
+                del self.adressToPassword[adress]
+            except:
+                # already disconnected
+                pass
         elif adress in self.adressToPassword:
             if playerMessage.startswith(tuple(['forward', 'left', 'right', 'turnTo:'])):
                 self.getPlayerByPassword(self.adressToPassword[adress]).actions.append(playerMessage)
@@ -175,6 +197,7 @@ class Game:
 #         return False
 
     def getRandomPos(self, zone):
+        """returns (x, y)"""
         return random.choice(self.zonePositions[zone])
 
 if __name__ == "__main__":

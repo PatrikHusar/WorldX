@@ -1,5 +1,5 @@
 import os
-from flask import Flask, jsonify, request, render_template_string
+from flask import Flask, jsonify, render_template_string
 import data
 
 class ServerHTML:
@@ -67,71 +67,66 @@ class ServerHTML:
 
         return jsonify({
             "map": fullMap,
-            "maxSize": self.worldSize
+            "maxSize": self.worldSize,
+            "spawnPos": getattr(data, 'spawnPos', [50, 75])
         })
         
     def getEntitiesJson(self):
         entitiesList = []
-        
-        raw_players = list(self.game.getPlayersList()) if hasattr(self.game, 'getPlayersList') else []
-        raw_entities = list(self.game.getEntitiesList()) if hasattr(self.game, 'getEntitiesList') else []
-        
-        for entityObj in raw_players + raw_entities:
-            try:
-                class_name = entityObj.__class__.__name__
-                unique_id = getattr(entityObj, 'playerId', getattr(entityObj, 'entityId', getattr(entityObj, 'id', 0)))
+        all_objects = self.game.getPlayersList() + self.game.getEntitiesList() + self.game.getChestsList()
+
+        for item in all_objects:
+            if hasattr(item, 'chest'):
+                unique_id = item.chestId
+                type_id = item.chest.get('typeId', 10)
+                entity_type = "chest"
+                eDir = getattr(item, 'dir', 'north')
+                eX = float(item.x)
+                eY = float(item.y)
+                eHp = 100
+                eEquipped = []
+                eInventory = item.chest.get('drops', [])
+                eSight = 0
+
+            else:
+                raw_type = getattr(item, 'type', item.__class__.__name__).lower()
                 
-                type_id = unique_id
-                if hasattr(entityObj, 'entity') and isinstance(entityObj.entity, dict):
-                    type_id = entityObj.entity.get('typeId', entityObj.entity.get('id', type_id))
-                elif hasattr(entityObj, 'typeId'):
-                    type_id = entityObj.typeId
-                elif hasattr(entityObj, 'id'):
-                    type_id = entityObj.id
-                
-                if class_name == "Player" or entityObj in raw_players:
+                if raw_type == "player" or hasattr(item, 'playerId'):
                     entity_type = "player"
-                    eSight = int(getattr(entityObj, 'player', {}).get('sight', getattr(entityObj, 'sight', 5)))
-                    type_id = 27
+                    unique_id = item.playerId
+                    type_id = item.player.get('typeId', 27) if hasattr(item, 'player') else 27
+                    eSight = item.player.get('sight', 5) if hasattr(item, 'player') else getattr(item, 'sight', 5)
+                    eHp = getattr(item, 'hp', 100)
+                    raw_equipped = item.player.get('equipped', {}) if hasattr(item, 'player') else {}
+                    if isinstance(raw_equipped, dict):
+                        eEquipped = [[slot, item] for slot, item in raw_equipped.items()]
+                    else:
+                        eEquipped = raw_equipped
+                    eInventory = item.player.get('inventory', []) if hasattr(item, 'player') else []
                 else:
                     entity_type = "entity"
-                    eSight = getattr(entityObj, 'sight', 3)
-                
-                eDir = getattr(entityObj, 'dir', 'south')
-                
-                eX = float(getattr(entityObj, 'x', 0.0))
-                eY = float(getattr(entityObj, 'y', 0.0))
-                
-                if hasattr(entityObj, 'entity') and isinstance(entityObj.entity, dict):
-                    eHp = entityObj.entity.get('health', entityObj.entity.get('hp', 100))
-                else:
-                    eHp = getattr(entityObj, 'health', getattr(entityObj, 'hp', 100))
+                    unique_id = item.entityId if hasattr(item, 'entityId') else getattr(item, 'id', 0)
+                    type_id = item.entity.get('typeId', 4) if hasattr(item, 'entity') else 4
+                    eSight = item.entity.get('sight', 3) if hasattr(item, 'entity') else getattr(item, 'sight', 3)
+                    eHp = item.entity.get('health', 100) if hasattr(item, 'entity') else getattr(item, 'hp', 100)
+                    eEquipped = []
+                    eInventory = []
 
-                if hasattr(entityObj, 'entity') and isinstance(entityObj.entity, dict):
-                    eEquipped = entityObj.entity.get('equipped', {})
-                else:
-                    eEquipped = getattr(entityObj, 'equipped', {})
+                eDir = getattr(item, 'dir', 'south')
+                eX = float(item.x)
+                eY = float(item.y)
 
-                if hasattr(entityObj, 'entity') and isinstance(entityObj.entity, dict):
-                    eInventory = entityObj.entity.get('inventory', [])
-                else:
-                    eInventory = getattr(entityObj, 'inventory', [])
-
-                asset_name = f"{type_id}{eDir}"
-                
-                entitiesList.append({
-                    "id": unique_id,
-                    "asset": asset_name,
-                    "type": entity_type,
-                    "hp": eHp,
-                    "equipped": eEquipped,
-                    "inventory": eInventory,
-                    "x": eX,
-                    "y": eY,
-                    "sight": int(eSight)
-                })
-            except Exception:
-                continue
+            entitiesList.append({
+                "id": unique_id,
+                "asset": f"{type_id}{eDir}",
+                "type": entity_type,
+                "hp": eHp,
+                "equipped": eEquipped,
+                "inventory": eInventory,
+                "x": eX,
+                "y": eY,
+                "sight": int(eSight)
+            })
             
         return jsonify(entitiesList)
 
@@ -208,8 +203,8 @@ class ServerHTML:
                 #infoPanel h3 { margin: 0 0 10px 0; color: #4CAF50; font-size: 16px; border-bottom: 1px solid #555; padding-bottom: 5px; }
                 .info-row { display: flex; flex-direction: column; margin-bottom: 8px; }
                 .info-row-inline { display: flex; justify-content: space-between; margin-bottom: 5px; }
-                .info-label { color: #aaa; font-weight: bold; }
-                .info-value { color: #fff; word-break: break-word; }
+                .info-label { color: #aaa; font-weight: bold; margin-bottom: 2px; }
+                .info-value { color: #fff; word-break: break-word; line-height: 1.4; }
                 .hidden { display: none !important; }
             </style>
         </head>
@@ -233,7 +228,7 @@ class ServerHTML:
                 <div id="infoPanel" class="hidden">
                     <h3 id="infoTitle">Entity Details</h3>
                     
-                    <div class="info-row-inline"><span class="info-label">HP:</span><span class="info-value" id="infoHp">N/A</span></div>
+                    <div id="hpRow" class="info-row-inline"><span class="info-label">HP:</span><span class="info-value" id="infoHp">N/A</span></div>
                     
                     <div id="zoneRow" class="info-row-inline"><span class="info-label">Zone:</span><span class="info-value" id="infoZone">N/A</span></div>
                     
@@ -256,12 +251,12 @@ class ServerHTML:
                 const ctx = canvas.getContext('2d');
                 
                 const baseBlockSize = 40; 
-                let zoomLevel = 1.0;
+                let zoomLevel = 2.0;
                 const minZoom = 0.4;
                 const maxZoom = 2.5;
                 
-                let cameraC = 40.0; 
-                let cameraR = 64.0; 
+                let cameraC = 0.0; 
+                let cameraR = 0.0; 
                 let maxWorldSize = 180;
                 
                 let fullWorldMap = []; 
@@ -293,7 +288,7 @@ class ServerHTML:
                 const textures = {};
                 let loadedImagesCount = 0;
 
-                const assetsToLoad = ["26", "27", "27north", "27east", "27south", "27west"]; 
+                const assetsToLoad = ["26", "27", "27north", "27east", "27south", "27west", "10", "10north"]; 
                 blocksConfig.forEach(block => {
                     const bId = (block.typeId !== undefined) ? block.typeId : block.id;
                     if (bId !== undefined) {
@@ -328,13 +323,22 @@ class ServerHTML:
                 }
 
                 function loadAndRegisterAsset(assetName) {
-                    if (textures[assetName] !== undefined) return;
-                    textures[assetName] = "loading"; 
-                    
-                    const img = new Image();
-                    img.src = `/static/${assetName}.png`;
-                    img.onload = () => { textures[assetName] = img; };
-                    img.onerror = () => { textures[assetName] = null; };
+                    if (textures[assetName] === undefined) {
+                        textures[assetName] = "loading"; 
+                        const img = new Image();
+                        img.src = `/static/${assetName}.png`;
+                        img.onload = () => { textures[assetName] = img; };
+                        img.onerror = () => { textures[assetName] = null; };
+                    }
+
+                    const baseAsset = assetName.replace(/(north|south|east|west)/g, '');
+                    if (baseAsset !== assetName && textures[baseAsset] === undefined) {
+                        textures[baseAsset] = "loading";
+                        const baseImg = new Image();
+                        baseImg.src = `/static/${baseAsset}.png`;
+                        baseImg.onload = () => { textures[baseAsset] = baseImg; };
+                        baseImg.onerror = () => { textures[baseAsset] = null; };
+                    }
                 }
 
                 function loadEntireWorld() {
@@ -349,6 +353,8 @@ class ServerHTML:
                             fullWorldMap = data.map;
                             maxWorldSize = data.maxSize;
                             
+                            centerCameraOn(data.spawnPos[0], data.spawnPos[1]);
+
                             loadEntitiesOnly();
                             startRenderLoop(performance.now());
                             startPollingLoop();
@@ -454,6 +460,7 @@ class ServerHTML:
                     followedPlayerId = playerId;
                     const p = currentEntities.find(e => e.id === playerId);
                     if (p) {
+                        zoomLevel = 2.0;
                         centerCameraOn(p.x, p.y);
                     }
                 }
@@ -494,7 +501,11 @@ class ServerHTML:
                     } else {
                         ctx.beginPath();
                         ctx.arc(posX + drawSize / 2, posY + drawSize / 2, drawSize * 0.4, 0, 2 * Math.PI);
-                        ctx.fillStyle = (ent.type === "player") ? "#4CAF50" : "#F44336";
+                        
+                        if (ent.type === "player") ctx.fillStyle = "#4CAF50";
+                        else if (ent.type === "chest") ctx.fillStyle = "#FFC107";
+                        else ctx.fillStyle = "#F44336";
+                        
                         ctx.fill();
                         ctx.lineWidth = 2;
                         ctx.strokeStyle = "#FFFFFF";
@@ -689,12 +700,14 @@ class ServerHTML:
                     const clickX = e.clientX - rect.left;
                     const clickY = e.clientY - rect.top;
                     const drawSize = baseBlockSize * zoomLevel;
-                    const clickWorldX = cameraC + (clickX / drawSize);
-                    const clickWorldY = cameraR + (clickY / drawSize);
+                    
+                    const clickWorldX = Math.floor(cameraC + (clickX / drawSize));
+                    const clickWorldY = Math.floor(cameraR + (clickY / drawSize));
                     
                     const clickedEntity = currentEntities.find(ent => {
-                        return Math.abs(ent.x + 0.5 - clickWorldX) <= 0.8 && 
-                               Math.abs(ent.y + 0.5 - clickWorldY) <= 0.8;
+                        const entX = Math.floor(ent.x);
+                        const entY = Math.floor(ent.y);
+                        return entX === clickWorldX && entY === clickWorldY;
                     });
                     
                     if (clickedEntity) {
@@ -708,6 +721,7 @@ class ServerHTML:
 
                 function showEntityDetails(ent) {
                     const infoPanel = document.getElementById('infoPanel');
+                    const hpRow = document.getElementById('hpRow');
                     const zoneRow = document.getElementById('zoneRow');
                     const playerStats = document.getElementById('playerOnlyStats');
                     const infoTitle = document.getElementById('infoTitle');
@@ -716,18 +730,21 @@ class ServerHTML:
 
                     if (ent.type === 'player') {
                         infoTitle.innerText = `Player ${ent.id}`;
+                        hpRow.classList.remove('hidden');
                         zoneRow.classList.add('hidden');
                         playerStats.classList.remove('hidden');
 
-                        let eqText = "Nothing";
-                        if (ent.equipped && typeof ent.equipped === 'object' && Object.keys(ent.equipped).length > 0) {
-                            if (Array.isArray(ent.equipped)) {
-                                eqText = ent.equipped.join(', ');
-                            } else {
-                                eqText = Object.entries(ent.equipped).map(([slot, item]) => `${slot}: ${item}`).join(', ');
-                            }
+                        let eqHtml = "Nothing";
+                        if (ent.equipped && Array.isArray(ent.equipped) && ent.equipped.length > 0) {
+                            eqHtml = ent.equipped
+                                .map(([slot, item]) => `${slot}: ${item === null ? 'None' : item}`)
+                                .join('<br>');
+                        } else if (ent.equipped && typeof ent.equipped === 'object' && Object.keys(ent.equipped).length > 0) {
+                            eqHtml = Object.entries(ent.equipped)
+                                .map(([slot, item]) => `${slot}: ${item === null ? 'None' : item}`)
+                                .join('<br>');
                         }
-                        document.getElementById('infoEquipped').innerText = eqText;
+                        document.getElementById('infoEquipped').innerHTML = eqHtml;
 
                         let invText = "Empty";
                         if (ent.inventory && Array.isArray(ent.inventory) && ent.inventory.length > 0) {
@@ -737,8 +754,21 @@ class ServerHTML:
                         }
                         document.getElementById('infoInventory').innerText = invText;
 
+                    } else if (ent.type === 'chest') {
+                        infoTitle.innerText = "Chest";
+                        hpRow.classList.add('hidden');
+                        playerStats.classList.add('hidden');
+                        zoneRow.classList.remove('hidden');
+                        const ex = Math.floor(ent.x);
+                        const ey = Math.floor(ent.y);
+                        let zoneName = "UNKNOWN";
+                        if (fullWorldMap[ey] && fullWorldMap[ey][ex]) {
+                            zoneName = fullWorldMap[ey][ex].zone || "UNKNOWN";
+                        }
+                        document.getElementById('infoZone').innerText = zoneName.toUpperCase();
                     } else {
-                        infoTitle.innerText = "Entity Details";
+                        infoTitle.innerText = "Entity";
+                        hpRow.classList.remove('hidden');
                         zoneRow.classList.remove('hidden');
                         playerStats.classList.add('hidden');
 
@@ -748,7 +778,6 @@ class ServerHTML:
                         if (fullWorldMap[ey] && fullWorldMap[ey][ex]) {
                             zoneName = fullWorldMap[ey][ex].zone || "UNKNOWN";
                         }
-                        
                         document.getElementById('infoZone').innerText = zoneName.toUpperCase();
                     }
 
