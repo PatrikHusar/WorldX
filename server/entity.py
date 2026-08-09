@@ -98,28 +98,31 @@ class Entity:
             return
 
         moveChoice = self.pathFind(mapData, targetX, targetY)
-        if moveChoice:
-            self.executeStep(moveChoice)
-        else:
-            self.passive()
+        if moveChoice != True:
+            if moveChoice:
+                self.executeStep(moveChoice)
+            else:
+                self.passive()
 
     def pathFind(self, mapPart, targetX, targetY):
-        sight = int(self.entity.get('sight', 3))
-        startX, startY = int(self.x), int(self.y)
+        sight = int(self.entity['sight'])
         width = len(mapPart)
         startC, startR = sight, sight
-        targetC = int(targetX) - startX + sight
-        targetR = int(targetY) - startY + sight
+        targetC = int(targetX) - int(self.x) + sight
+        targetR = int(targetY) - int(self.y) + sight
         queue = [(startR, startC, [])]
         visited = {(startR, startC)}
         while queue:
             r, c, path = queue.pop(0)
-            if r == targetR and c == targetC:
-                return path[0] if path else None
+            for direction, (dx, dy) in self.offsets.items():
+                if r + dy == targetR and c + dx == targetC:
+                    if not path:
+                        self.dir = direction
+                    return path[0] if path else True
             for direction, (dx, dy) in self.offsets.items():
                 nr, nc = r + dy, c + dx
                 if 0 <= nr < width and 0 <= nc < width and (nr, nc) not in visited:
-                    if (nr == targetR and nc == targetC) or self.canWalkOn(mapPart[nr][nc]):
+                    if self.canWalkOn(mapPart[nr][nc]):
                         visited.add((nr, nc))
                         queue.append((nr, nc, path + [direction]))
         return None

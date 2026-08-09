@@ -1,5 +1,5 @@
 import os
-from flask import Flask, jsonify, render_template_string
+from flask import Flask, jsonify, request, render_template_string
 import data
 
 class ServerHTML:
@@ -74,20 +74,20 @@ class ServerHTML:
     def getEntitiesJson(self):
         entitiesList = []
         all_objects = self.game.getPlayersList() + self.game.getEntitiesList() + self.game.getChestsList()
-
         for item in all_objects:
+            eX = float(item.x)
+            eY = float(item.y)
+            eSpeed = getattr(item, 'speed', 5.0)
             if hasattr(item, 'chest'):
                 unique_id = item.chestId
                 type_id = item.chest.get('typeId', 10)
                 entity_type = "chest"
                 eDir = getattr(item, 'dir', 'north')
-                eX = float(item.x)
-                eY = float(item.y)
                 eHp = 100
                 eEquipped = []
                 eInventory = item.chest.get('drops', [])
                 eSight = 0
-
+                eSpeed = 0
             else:
                 raw_type = getattr(item, 'type', item.__class__.__name__).lower()
                 
@@ -99,7 +99,7 @@ class ServerHTML:
                     eHp = getattr(item, 'hp', 100)
                     raw_equipped = item.player.get('equipped', {}) if hasattr(item, 'player') else {}
                     if isinstance(raw_equipped, dict):
-                        eEquipped = [[slot, item] for slot, item in raw_equipped.items()]
+                        eEquipped = [[slot, itm] for slot, itm in raw_equipped.items()]
                     else:
                         eEquipped = raw_equipped
                     eInventory = item.player.get('inventory', []) if hasattr(item, 'player') else []
@@ -113,8 +113,6 @@ class ServerHTML:
                     eInventory = []
 
                 eDir = getattr(item, 'dir', 'south')
-                eX = float(item.x)
-                eY = float(item.y)
 
             entitiesList.append({
                 "id": unique_id,
@@ -125,6 +123,7 @@ class ServerHTML:
                 "inventory": eInventory,
                 "x": eX,
                 "y": eY,
+                "speed": eSpeed,
                 "sight": int(eSight)
             })
             
@@ -253,7 +252,7 @@ class ServerHTML:
                 const baseBlockSize = 40; 
                 let zoomLevel = 2.0;
                 const minZoom = 0.4;
-                const maxZoom = 2.5;
+                const maxZoom = 4.0;
                 
                 let cameraC = 0.0; 
                 let cameraR = 0.0; 
@@ -344,22 +343,29 @@ class ServerHTML:
                 function loadEntireWorld() {
                     fetch('/api/fullMap')
                         .then(res => {
-                            if (!res.ok) throw new Error("Server is restarting...");
+                            if (!res.ok) throw new Error("Server restarting...");
                             return res.json();
                         })
                         .then(data => {
+                            currentEntities = [];
                             for (let member in discoveredTiles) delete discoveredTiles[member];
+                            currentlyVisibleTiles.clear();
 
                             fullWorldMap = data.map;
                             maxWorldSize = data.maxSize;
+                            zoomLevel = 2.0; // Reset na novy predvoleny zoom
                             
-                            centerCameraOn(data.spawnPos[0], data.spawnPos[1]);
+                            if (data.spawnPos && data.spawnPos.length === 2) {
+                                centerCameraOn(data.spawnPos[0], data.spawnPos[1]);
+                            } else {
+                                centerCameraOn(50, 75);
+                            }
 
                             loadEntitiesOnly();
-                            startRenderLoop(performance.now());
+                            requestAnimationFrame(startRenderLoop);
                             startPollingLoop();
                         })
-                        .catch(err => {
+                        .catch(() => {
                             setTimeout(loadEntireWorld, 2000);
                         });
                 }
@@ -377,6 +383,7 @@ class ServerHTML:
                                 if (existing) {
                                     existing.targetX = Number(nEnt.x);
                                     existing.targetY = Number(nEnt.y);
+                                    existing.speed = Number(nEnt.speed) || 5.0;
                                     existing.asset = nEnt.asset;
                                     existing.hp = nEnt.hp;
                                     existing.equipped = nEnt.equipped;
@@ -384,10 +391,11 @@ class ServerHTML:
                                     existing.sight = nEnt.sight;
                                     existing.type = nEnt.type;
                                 } else {
-                                    nEnt.x = Number(nEnt.x);
-                                    nEnt.y = Number(nEnt.y);
-                                    nEnt.targetX = nEnt.x;
-                                    nEnt.targetY = nEnt.y;
+                                    nEnt.targetX = Number(nEnt.x);
+                                    nEnt.targetY = Number(nEnt.y);
+                                    nEnt.x = nEnt.targetX; 
+                                    nEnt.y = nEnt.targetY;
+                                    nEnt.speed = Number(nEnt.speed) || 5.0;
                                     currentEntities.push(nEnt);
                                 }
                                 
@@ -402,8 +410,8 @@ class ServerHTML:
                             currentlyVisibleTiles.clear();
 
                             playersList.forEach(player => {
-                                const pX = Math.round(player.x);
-                                const pY = Math.round(player.y);
+                                const pX = Math.round(player.targetX);
+                                const pY = Math.round(player.targetY);
                                 const pSight = player.sight || 5;
 
                                 for (let dy = -pSight; dy <= pSight; dy++) {
@@ -425,7 +433,7 @@ class ServerHTML:
                     container.innerHTML = '';
 
                     if (players.length === 0) {
-                        container.innerHTML = '<div style="color: #aaa; font-style: italic; font-size: 13px;">No players</div>';
+                        container.innerHTML = '<div style="color: #aaa; font-style: italic; font-size: 13px;">No players online</div>';
                         return;
                     }
 
@@ -439,7 +447,12 @@ class ServerHTML:
                         const btn = document.createElement('button');
                         btn.className = 'teleport-btn';
                         btn.innerText = 'Teleport';
-                        btn.onclick = () => teleportToPlayer(p.id);
+                        
+                        btn.onpointerdown = (e) => e.stopPropagation();
+                        btn.onclick = (e) => {
+                            e.stopPropagation();
+                            teleportToPlayer(p.id);
+                        };
 
                         item.appendChild(label);
                         item.appendChild(btn);
@@ -460,8 +473,8 @@ class ServerHTML:
                     followedPlayerId = playerId;
                     const p = currentEntities.find(e => e.id === playerId);
                     if (p) {
-                        zoomLevel = 2.0;
-                        centerCameraOn(p.x, p.y);
+                        zoomLevel = 2.0; // Zoom 2.0 pri teleporte
+                        centerCameraOn(p.targetX, p.targetY);
                     }
                 }
 
@@ -481,6 +494,7 @@ class ServerHTML:
                 }
 
                 function startRenderLoop(nowTime) {
+                    if (!nowTime) nowTime = performance.now();
                     const dt = Math.min((nowTime - lastTime) / 1000, 0.1) || 0;
                     lastTime = nowTime;
 
@@ -513,19 +527,38 @@ class ServerHTML:
                     }
                 }
 
-                function renderMap(dt) {
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    const drawSize = baseBlockSize * zoomLevel;
-
-                    const lerpSpeed = 10.0;
+                function updateEntityPositions(dt) {
                     currentEntities.forEach(ent => {
-                        if (ent.targetX !== undefined && !isNaN(ent.targetX)) {
-                            ent.x += (ent.targetX - ent.x) * Math.min(dt * lerpSpeed, 1.0);
-                        }
-                        if (ent.targetY !== undefined && !isNaN(ent.targetY)) {
-                            ent.y += (ent.targetY - ent.y) * Math.min(dt * lerpSpeed, 1.0);
+                        if (ent.targetX !== undefined && ent.targetY !== undefined) {
+                            const dx = ent.targetX - ent.x;
+                            const dy = ent.targetY - ent.y;
+                            const dist = Math.sqrt(dx * dx + dy * dy);
+
+                            if (dist > 1.5) {
+                                ent.x = ent.targetX;
+                                ent.y = ent.targetY;
+                            } else if (dist > 0.01) {
+                                const moveDist = ent.speed * dt;
+                                if (moveDist >= dist) {
+                                    ent.x = ent.targetX;
+                                    ent.y = ent.targetY;
+                                } else {
+                                    ent.x += (dx / dist) * moveDist;
+                                    ent.y += (dy / dist) * moveDist;
+                                }
+                            } else {
+                                ent.x = ent.targetX;
+                                ent.y = ent.targetY;
+                            }
                         }
                     });
+                }
+
+                function renderMap(dt) {
+                    updateEntityPositions(dt);
+
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    const drawSize = baseBlockSize * zoomLevel;
 
                     if (followedPlayerId !== null && !isDragging) {
                         const fPlayer = currentEntities.find(e => e.id === followedPlayerId);
@@ -534,78 +567,31 @@ class ServerHTML:
                         }
                     }
 
-                    const colsToDraw = Math.ceil(canvas.width / drawSize) + 2;
-                    const rowsToDraw = Math.ceil(canvas.height / drawSize) + 2;
-                    
-                    const startDrawX = Math.floor(cameraC);
-                    const startDrawY = Math.floor(cameraR);
+                    const startCol = Math.max(0, Math.floor(cameraC));
+                    const startRow = Math.max(0, Math.floor(cameraR));
+                    const endCol = Math.min(maxWorldSize, startCol + Math.ceil(canvas.width / drawSize) + 1);
+                    const endRow = Math.min(maxWorldSize, startRow + Math.ceil(canvas.height / drawSize) + 1);
 
                     const now = Date.now();
 
-                    for (let r = -1; r < rowsToDraw; r++) {
-                        for (let c = -1; c < colsToDraw; c++) {
-                            const wx = startDrawX + c;
-                            const wy = startDrawY + r;
-                            
-                            if (wx < 0 || wx >= maxWorldSize || wy < 0 || wy >= maxWorldSize) continue;
-                            
-                            const posX = (wx - cameraC) * drawSize;
-                            const posY = (wy - cameraR) * drawSize;
+                    for (let r = startRow; r < endRow; r++) {
+                        for (let c = startCol; c < endCol; c++) {
+                            const posX = (c - cameraC) * drawSize;
+                            const posY = (r - cameraR) * drawSize;
+                            const key = `${c},${r}`;
 
-                            if (fullWorldMap[wy] && fullWorldMap[wy][wx]) {
-                                const cell = fullWorldMap[wy][wx];
-                                if (cell.g !== null && textures[cell.g] && textures[cell.g] !== "loading") {
-                                    ctx.drawImage(textures[cell.g], posX, posY, drawSize, drawSize);
-                                }
-                            }
-                        }
-                    }
-
-                    const playersList = currentEntities.filter(e => e.type === "player");
-                    playersList.forEach(ent => {
-                        const posX = (ent.x - cameraC) * drawSize;
-                        const posY = (ent.y - cameraR) * drawSize;
-
-                        if (posX + drawSize >= 0 && posY + drawSize >= 0 && posX <= canvas.width && posY <= canvas.height) {
-                            drawAnimatedEntity(ent, posX, posY, drawSize);
-                        }
-                    });
-
-                    const otherEntitiesList = currentEntities.filter(e => e.type !== "player");
-                    otherEntitiesList.forEach(ent => {
-                        const posX = (ent.x - cameraC) * drawSize;
-                        const posY = (ent.y - cameraR) * drawSize;
-
-                        if (posX + drawSize >= 0 && posY + drawSize >= 0 && posX <= canvas.width && posY <= canvas.height) {
-                            const entX = Math.round(ent.x);
-                            const entY = Math.round(ent.y);
-                            const key = `${entX},${entY}`;
-                            
-                            const inSight = currentlyVisibleTiles.has(key);
-                            const seenRecent = (now - (discoveredTiles[key] || 0) <= fogRevealTimeoutMs);
-
-                            if (inSight || seenRecent) {
-                                drawAnimatedEntity(ent, posX, posY, drawSize);
-                            }
-                        }
-                    });
-
-                    for (let r = -1; r < rowsToDraw; r++) {
-                        for (let c = -1; c < colsToDraw; c++) {
-                            const wx = startDrawX + c;
-                            const wy = startDrawY + r;
-                            
-                            if (wx < 0 || wx >= maxWorldSize || wy < 0 || wy >= maxWorldSize) continue;
-                            
-                            const posX = (wx - cameraC) * drawSize;
-                            const posY = (wy - cameraR) * drawSize;
-
-                            const key = `${wx},${wy}`;
                             const inPlayerSight = currentlyVisibleTiles.has(key);
                             const lastSeenTime = discoveredTiles[key] || 0;
                             const isVisible = inPlayerSight || (now - lastSeenTime <= fogRevealTimeoutMs);
 
-                            if (!isVisible) {
+                            if (isVisible) {
+                                if (fullWorldMap[r] && fullWorldMap[r][c]) {
+                                    const cell = fullWorldMap[r][c];
+                                    if (cell.g !== null && textures[cell.g] && textures[cell.g] !== "loading") {
+                                        ctx.drawImage(textures[cell.g], posX, posY, drawSize, drawSize);
+                                    }
+                                }
+                            } else {
                                 if (textures["26"] && textures["26"] !== "loading") {
                                     ctx.drawImage(textures["26"], posX, posY, drawSize, drawSize);
                                 } else {
@@ -615,6 +601,28 @@ class ServerHTML:
                             }
                         }
                     }
+
+                    currentEntities.forEach(ent => {
+                        const posX = (ent.x - cameraC) * drawSize;
+                        const posY = (ent.y - cameraR) * drawSize;
+
+                        if (posX + drawSize >= 0 && posY + drawSize >= 0 && posX <= canvas.width && posY <= canvas.height) {
+                            if (ent.type === "player") {
+                                drawAnimatedEntity(ent, posX, posY, drawSize);
+                            } else {
+                                const entX = Math.round(ent.targetX || ent.x);
+                                const entY = Math.round(ent.targetY || ent.y);
+                                const key = `${entX},${entY}`;
+                                
+                                const inSight = currentlyVisibleTiles.has(key);
+                                const seenRecent = (now - (discoveredTiles[key] || 0) <= fogRevealTimeoutMs);
+
+                                if (inSight || seenRecent) {
+                                    drawAnimatedEntity(ent, posX, posY, drawSize);
+                                }
+                            }
+                        }
+                    });
                 }
 
                 canvas.addEventListener('mousemove', function(e) {
@@ -705,9 +713,9 @@ class ServerHTML:
                     const clickWorldY = Math.floor(cameraR + (clickY / drawSize));
                     
                     const clickedEntity = currentEntities.find(ent => {
-                        const entX = Math.floor(ent.x);
-                        const entY = Math.floor(ent.y);
-                        return entX === clickWorldX && entY === clickWorldY;
+                        const entTileX = Math.floor(ent.targetX !== undefined ? ent.targetX : ent.x);
+                        const entTileY = Math.floor(ent.targetY !== undefined ? ent.targetY : ent.y);
+                        return entTileX === clickWorldX && entTileY === clickWorldY;
                     });
                     
                     if (clickedEntity) {
@@ -748,32 +756,33 @@ class ServerHTML:
 
                         let invText = "Empty";
                         if (ent.inventory && Array.isArray(ent.inventory) && ent.inventory.length > 0) {
-                            invText = ent.inventory.join(', ');
+                            invText = ent.inventory.join('<br>');
                         } else if (ent.inventory && typeof ent.inventory === 'object' && Object.keys(ent.inventory).length > 0) {
-                            invText = Object.values(ent.inventory).join(', ');
+                            invText = Object.values(ent.inventory).join('<br>');
                         }
-                        document.getElementById('infoInventory').innerText = invText;
+                        document.getElementById('infoInventory').innerHTML = invText;
 
                     } else if (ent.type === 'chest') {
-                        infoTitle.innerText = "Chest";
+                        infoTitle.innerText = "Chest Details";
                         hpRow.classList.add('hidden');
                         playerStats.classList.add('hidden');
                         zoneRow.classList.remove('hidden');
-                        const ex = Math.floor(ent.x);
-                        const ey = Math.floor(ent.y);
+
+                        const ex = Math.floor(ent.targetX || ent.x);
+                        const ey = Math.floor(ent.targetY || ent.y);
                         let zoneName = "UNKNOWN";
                         if (fullWorldMap[ey] && fullWorldMap[ey][ex]) {
                             zoneName = fullWorldMap[ey][ex].zone || "UNKNOWN";
                         }
                         document.getElementById('infoZone').innerText = zoneName.toUpperCase();
                     } else {
-                        infoTitle.innerText = "Entity";
+                        infoTitle.innerText = "Entity Details";
                         hpRow.classList.remove('hidden');
                         zoneRow.classList.remove('hidden');
                         playerStats.classList.add('hidden');
 
-                        const ex = Math.floor(ent.x);
-                        const ey = Math.floor(ent.y);
+                        const ex = Math.floor(ent.targetX || ent.x);
+                        const ey = Math.floor(ent.targetY || ent.y);
                         let zoneName = "UNKNOWN";
                         if (fullWorldMap[ey] && fullWorldMap[ey][ex]) {
                             zoneName = fullWorldMap[ey][ex].zone || "UNKNOWN";

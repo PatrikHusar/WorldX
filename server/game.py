@@ -43,7 +43,7 @@ class Game:
                 self.chestsPos[self.idCounter] = self.getRandomPos(zone)
                 details = data.getObjectInfo(30)
                 details['drops'].append(random.choice(data.chestDrops[zone]))
-                chest = Chest(self.chestsPos[self.idCounter], details, self.idCounter)
+                chest = Chest(self.chestsPos[self.idCounter], details, self.idCounter, self)
                 self.world[chest.y][chest.x]['entities'][self.idCounter] = chest
                 self.idCounter += 1
 
@@ -144,8 +144,10 @@ class Game:
             self.world[newY][newX]['entities'][id] = entityObj
             if entityObj.__class__.__name__ == "Entity":
                 self.entitiesPos[id] = (newX, newY)
-            else:
+            elif entityObj.__class__.__name__ == 'Player':
                 self.playersPos[id] = (newX, newY)
+            elif entityObj.__class__.__name__ == 'Chest':
+                self.chestsPos[id] = (newX, newY)
     def createNewWorld(self):
         self.world = []
         for r in range(data.worldSize):
@@ -182,7 +184,7 @@ class Game:
                 # already disconnected
                 pass
         elif adress in self.adressToPassword:
-            if playerMessage.startswith(tuple(['forward', 'left', 'right', 'turnTo:'])):
+            if playerMessage.startswith(tuple(['forward', 'left', 'right', 'turnTo:', 'interact:'])):
                 self.getPlayerByPassword(self.adressToPassword[adress]).actions.append(playerMessage)
             else:
                 if playerMessage.startswith('getPos'):

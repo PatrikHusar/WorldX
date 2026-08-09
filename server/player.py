@@ -22,7 +22,19 @@ class Player:
         pass
     def takeItem(self, item):
         pass
-        
+    def interact(self, action=None):
+        entities = self.game.world[int(self.y) + self.offsets[self.dir][1]][int(self.x) + self.offsets[self.dir][0]]['entities'].copy().values()
+        if entities:
+            for entity in entities:
+                if entity.__class__.__name__ == 'Chest':
+                    itemIds = entity.openChest()
+                    for id in itemIds:
+                        itemName = next((item['name'] for item in data.items if item['typeId'] == id), None)
+                        if itemName:
+                            if self.player['inventorySpace'] >= 1:
+                                self.player['inventorySpace'] -= 1
+                                self.player['inventory'].append(itemName)
+
     def restorePlayer(self, chestInventory, inventory, graves):
         self.player['chestInventory'] = chestInventory
         self.player['inventory'] = inventory
@@ -36,7 +48,7 @@ class Player:
     def canWalkOn(self, object):
         noEntities = True
         for entity in object['entities'].values():
-            if not entity.__class__.__name__ == 'Player':
+            if entity.__class__.__name__ == 'Chest':
                 noEntities = False
                 break
         if object['block']['typeId'] in self.player['allowedBlocks'] and noEntities == True:
@@ -106,3 +118,8 @@ class Player:
                 self.turnRight(currentTime)
             elif act.startswith('turnTo:'):
                 self.turnTowards(currentTime, act[6:])
+            elif act.startswith('interact:'):
+                if act[9:] == 'None':
+                    self.interact()
+                else:
+                    self.interact(act[9:])
