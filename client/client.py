@@ -6,8 +6,8 @@ import os
 from blessed import Terminal
 import json
 
-def getAccountPasscode():
-    filename = os.path.join(os.path.dirname(os.path.abspath(__file__)), "accountPassword.txt")
+def getAccountId():
+    filename = os.path.join(os.path.dirname(os.path.abspath(__file__)), "accountId.txt")
     if os.path.exists(filename):
         with open(filename, "r") as f:
             return f.read().strip()
@@ -35,7 +35,7 @@ class Client:
                 time.sleep(1)
                 print("waiting for server to start.")
         print("connected to server")
-        self.sendMessage(f"login:{getAccountPasscode()}", True)
+        self.sendMessage(f"login:{getAccountId()}", True)
         self.input_thread = threading.Thread(target=self.__loop_input, daemon=True).start()
 
     def __loop_input(self):
@@ -94,3 +94,6 @@ def is_pressed(klaves):
         client.pressedKeys.remove(char)
         return True
     return False
+
+def interact(action=None):
+    client.sendMessage(f'interact:{action}')
