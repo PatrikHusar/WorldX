@@ -1,4 +1,4 @@
-from client import is_pressed, turn_right, turn_left, forward, turn_towards, get_position, interact
+from client import is_pressed, turn_right, turn_left, forward, turn_towards, get_position, interact, attack
 
 while True:
     if is_pressed('w'):
@@ -9,3 +9,5 @@ while True:
         turn_left()
     elif is_pressed('e'):
         interact()
+    elif is_pressed(' '):
+        attack()

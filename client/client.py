@@ -97,3 +97,6 @@ def is_pressed(klaves):
 
 def interact(action=None):
     client.sendMessage(f'interact:{action}')
+
+def attack():
+    client.sendMessage('attack')
