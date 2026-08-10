@@ -36,7 +36,7 @@ class Game:
         self.spawnChests()
         Thread(target=self.main, daemon=True).start()
         self.webServer.startServer()
-    
+
     def spawnChests(self):
         for zone in data.entitySpawn.keys():
             for i in range(data.maxChestInZone[zone]):
@@ -89,7 +89,7 @@ class Game:
             zoneType = zone['zone']
             for _ in range(data.maxEnemiesInZone[zoneType]):
                 self.entitiesPos[self.idCounter] = self.getRandomPos(zoneType)
-                entity = Entity(self.entitiesPos[self.idCounter], data.entitySpawn[zoneType], self.idCounter, self)
+                entity = Entity(self.entitiesPos[self.idCounter], data.getObjectInfo(data.entitySpawn[zoneType]), self.idCounter, self)
                 self.world[int(entity.y)][int(entity.x)]['entities'][entity.entityId] = entity
                 self.idCounter += 1
 
@@ -184,7 +184,7 @@ class Game:
                 # already disconnected
                 pass
         elif adress in self.adressToPassword:
-            if playerMessage.startswith(tuple(['forward', 'left', 'right', 'turnTo:', 'interact:'])):
+            if playerMessage.startswith(tuple(['forward', 'left', 'right', 'turnTo:', 'interact:', 'attack'])):
                 self.getPlayerByPassword(self.adressToPassword[adress]).actions.append(playerMessage)
             else:
                 if playerMessage.startswith('getPos'):

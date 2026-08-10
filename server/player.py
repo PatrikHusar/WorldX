@@ -13,7 +13,8 @@ class Player:
         self.offsets = {'north': (0, -1), 'east': (1, 0), 'south': (0, 1), 'west': (-1, 0)}
         self.moveTargetX = float(self.x)
         self.moveTargetY = float(self.y)
-        self.time = 0
+        self.lastActionTime = 0
+        self.lastAttackTime = 0
         self.actions = []
 
     def equipItem(self, item, place):
@@ -22,14 +23,40 @@ class Player:
         pass
     def takeItem(self, item):
         pass
+    def takeDamage(self, dmg):
+        self.player['health'] -= dmg
+        if self.player['health'] <= 0.0:
+            self.player = data.getObjectInfo(self.entity['typeId'])
+            newPos = data.spawnPos
+            self.game.updateEntityMovement((self.moveTargetX, self.moveTargetY), newPos, self.playerId)
+            self.isMoving = False
+            self.x = newPos[0]
+            self.y = newPos[1]
+
+    def attack(self, currentTime):
+        if currentTime - self.lastAttackTime < self.player['attackPause']:
+            return
+        self.lastAttackTime = currentTime
+        entities = list(self.game.world[int(self.y) + self.offsets[self.dir][1]][int(self.x) + self.offsets[self.dir][0]]['entities'].values())
+        if entities:
+            for entity in entities:
+                if not entity.__class__.__name__ == 'Chest':
+                    if entity.__class__.__name__ == 'Entity' or not self.game.world[int(self.y)][int(self.x)]['zone'] in data.noPVPzones:
+                        itemIds = entity.takeDamage(self.player['damage'])
+                        if itemIds:
+                            for id in itemIds:
+                                if self.player['inventorySpace'] >= 1:
+                                    self.player['inventorySpace'] -= 1
+                                    self.player['inventory'].append(data.getXbyTypeIdInItems('name', id))
+
     def interact(self, action=None):
-        entities = self.game.world[int(self.y) + self.offsets[self.dir][1]][int(self.x) + self.offsets[self.dir][0]]['entities'].copy().values()
+        entities = list(self.game.world[int(self.y) + self.offsets[self.dir][1]][int(self.x) + self.offsets[self.dir][0]]['entities'].values())
         if entities:
             for entity in entities:
                 if entity.__class__.__name__ == 'Chest':
                     itemIds = entity.openChest()
                     for id in itemIds:
-                        itemName = next((item['name'] for item in data.items if item['typeId'] == id), None)
+                        itemName = data.getXbyTypeIdInItems('name', id)
                         if itemName:
                             if self.player['inventorySpace'] >= 1:
                                 self.player['inventorySpace'] -= 1
@@ -41,8 +68,9 @@ class Player:
         self.player['graves'] = graves
 
     def turnTowards(self, currentTime, dir):
-        if currentTime - self.time < self.player['pause'] or self.isMoving:
+        if currentTime - self.lastActionTime < self.player['walkPause'] or self.isMoving:
             return
+        self.lastActionTime = currentTime
         self.dir = dir
 
     def canWalkOn(self, object):
@@ -56,9 +84,9 @@ class Player:
         return False
 
     def forward(self, currentTime):
-        if currentTime - self.time < self.player['pause'] or self.isMoving:
+        if currentTime - self.lastActionTime < self.player['walkPause'] or self.isMoving:
             return
-        self.time = currentTime
+        self.lastActionTime = currentTime
         
         targetTileX = int(self.x + self.offsets[self.dir][0])
         targetTileY = int(self.y + self.offsets[self.dir][1])
@@ -68,13 +96,15 @@ class Player:
                 self.executeStep()
 
     def turnLeft(self, currentTime):
-        if currentTime - self.time < self.player['pause'] or self.isMoving:
+        if currentTime - self.lastActionTime < self.player['walkPause'] or self.isMoving:
             return
+        self.lastActionTime = currentTime
         self.dir = data.dirs[data.dirs.index(self.dir) - 1]
 
     def turnRight(self, currentTime):
-        if currentTime - self.time < self.player['pause'] or self.isMoving:
+        if currentTime - self.lastActionTime < self.player['walkPause'] or self.isMoving:
             return
+        self.lastActionTime = currentTime
         self.dir = data.dirs[(data.dirs.index(self.dir) + 1) % 4]
     
     def updatePhysics(self, deltaTime, currentTime):
@@ -94,7 +124,7 @@ class Player:
 
         if self.x == self.moveTargetX and self.y == self.moveTargetY:
             self.isMoving = False
-            self.time = currentTime
+            self.lastActionTime = currentTime
 
     def executeStep(self):
         oldX, oldY = int(self.x), int(self.y)
@@ -106,7 +136,7 @@ class Player:
         self.game.updateEntityMovement((oldX, oldY), (newX, newY), self.playerId)
 
     def doAction(self, currentTime):
-        if currentTime - self.time < self.player['pause'] or self.isMoving:
+        if currentTime - self.lastActionTime < self.player['walkPause'] or self.isMoving:
             return
         if self.actions:
             act = self.actions.pop(0)
@@ -123,3 +153,5 @@ class Player:
                     self.interact()
                 else:
                     self.interact(act[9:])
+            elif act.startswith('attack'):
+                self.attack(currentTime)

@@ -1,4 +1,5 @@
 import os
+import threading
 from flask import Flask, jsonify, request, render_template_string
 import data
 
@@ -31,7 +32,6 @@ class ServerHTML:
                 pass
 
     def pollEntities(self):
-        import threading
         event = threading.Event()
 
         def resolve():
@@ -234,11 +234,11 @@ class ServerHTML:
                     <div id="playerOnlyStats">
                         <div class="info-row">
                             <span class="info-label">Equipped:</span>
-                            <span class="info-value" id="infoEquipped">Nothing</span>
+                            <span class="info-value" id="infoEquipped"></span>
                         </div>
                         <div class="info-row">
                             <span class="info-label">Inventory:</span>
-                            <span class="info-value" id="infoInventory">Empty</span>
+                            <span class="info-value" id="infoInventory"></span>
                         </div>
                     </div>
                 </div>
@@ -353,7 +353,7 @@ class ServerHTML:
 
                             fullWorldMap = data.map;
                             maxWorldSize = data.maxSize;
-                            zoomLevel = 2.0; // Reset na novy predvoleny zoom
+                            zoomLevel = 2.0;
                             
                             if (data.spawnPos && data.spawnPos.length === 2) {
                                 centerCameraOn(data.spawnPos[0], data.spawnPos[1]);
@@ -410,8 +410,8 @@ class ServerHTML:
                             currentlyVisibleTiles.clear();
 
                             playersList.forEach(player => {
-                                const pX = Math.round(player.targetX);
-                                const pY = Math.round(player.targetY);
+                                const pX = Math.round(player.x);
+                                const pY = Math.round(player.y);
                                 const pSight = player.sight || 5;
 
                                 for (let dy = -pSight; dy <= pSight; dy++) {
@@ -433,7 +433,7 @@ class ServerHTML:
                     container.innerHTML = '';
 
                     if (players.length === 0) {
-                        container.innerHTML = '<div style="color: #aaa; font-style: italic; font-size: 13px;">No players online</div>';
+                        container.innerHTML = '<div style="color: #aaa; font-style: italic; font-size: 13px;">No players</div>';
                         return;
                     }
 
@@ -473,8 +473,8 @@ class ServerHTML:
                     followedPlayerId = playerId;
                     const p = currentEntities.find(e => e.id === playerId);
                     if (p) {
-                        zoomLevel = 2.0; // Zoom 2.0 pri teleporte
-                        centerCameraOn(p.targetX, p.targetY);
+                        zoomLevel = 2.0;
+                        centerCameraOn(p.x, p.y);
                     }
                 }
 
@@ -610,8 +610,8 @@ class ServerHTML:
                             if (ent.type === "player") {
                                 drawAnimatedEntity(ent, posX, posY, drawSize);
                             } else {
-                                const entX = Math.round(ent.targetX || ent.x);
-                                const entY = Math.round(ent.targetY || ent.y);
+                                const entX = Math.round(ent.x);
+                                const entY = Math.round(ent.y);
                                 const key = `${entX},${entY}`;
                                 
                                 const inSight = currentlyVisibleTiles.has(key);
@@ -709,13 +709,14 @@ class ServerHTML:
                     const clickY = e.clientY - rect.top;
                     const drawSize = baseBlockSize * zoomLevel;
                     
-                    const clickWorldX = Math.floor(cameraC + (clickX / drawSize));
-                    const clickWorldY = Math.floor(cameraR + (clickY / drawSize));
+                    // Presná desatinná pozícia kliknutia v hernom svete
+                    const clickWorldFloatX = cameraC + (clickX / drawSize);
+                    const clickWorldFloatY = cameraR + (clickY / drawSize);
                     
+                    // Dynamický hitbox: Kontroluje, či kliknutie spadlo do aktuálne animovaného obdĺžnika [ent.x, ent.x + 1] x [ent.y, ent.y + 1]
                     const clickedEntity = currentEntities.find(ent => {
-                        const entTileX = Math.floor(ent.targetX !== undefined ? ent.targetX : ent.x);
-                        const entTileY = Math.floor(ent.targetY !== undefined ? ent.targetY : ent.y);
-                        return entTileX === clickWorldX && entTileY === clickWorldY;
+                        return clickWorldFloatX >= ent.x && clickWorldFloatX <= (ent.x + 1.0) &&
+                               clickWorldFloatY >= ent.y && clickWorldFloatY <= (ent.y + 1.0);
                     });
                     
                     if (clickedEntity) {
@@ -742,47 +743,58 @@ class ServerHTML:
                         zoneRow.classList.add('hidden');
                         playerStats.classList.remove('hidden');
 
-                        let eqHtml = "Nothing";
-                        if (ent.equipped && Array.isArray(ent.equipped) && ent.equipped.length > 0) {
-                            eqHtml = ent.equipped
-                                .map(([slot, item]) => `${slot}: ${item === null ? 'None' : item}`)
-                                .join('<br>');
-                        } else if (ent.equipped && typeof ent.equipped === 'object' && Object.keys(ent.equipped).length > 0) {
-                            eqHtml = Object.entries(ent.equipped)
-                                .map(([slot, item]) => `${slot}: ${item === null ? 'None' : item}`)
-                                .join('<br>');
+                        // Ponechá názvy slotov (head:, chest:...), ale pri prázdnych hodnotách ukáže prázdny priestor
+                        let eqHtml = "";
+                        if (ent.equipped) {
+                            if (Array.isArray(ent.equipped)) {
+                                eqHtml = ent.equipped
+                                    .map(([slot, item]) => {
+                                        const val = (item === null || item === undefined || item === 'None') ? '' : item;
+                                        return `${slot}: ${val}`;
+                                    })
+                                    .join('<br>');
+                            } else if (typeof ent.equipped === 'object') {
+                                eqHtml = Object.entries(ent.equipped)
+                                    .map(([slot, item]) => {
+                                        const val = (item === null || item === undefined || item === 'None') ? '' : item;
+                                        return `${slot}: ${val}`;
+                                    })
+                                    .join('<br>');
+                            }
                         }
                         document.getElementById('infoEquipped').innerHTML = eqHtml;
 
-                        let invText = "Empty";
-                        if (ent.inventory && Array.isArray(ent.inventory) && ent.inventory.length > 0) {
-                            invText = ent.inventory.join('<br>');
-                        } else if (ent.inventory && typeof ent.inventory === 'object' && Object.keys(ent.inventory).length > 0) {
-                            invText = Object.values(ent.inventory).join('<br>');
+                        let invItems = [];
+                        if (ent.inventory) {
+                            if (Array.isArray(ent.inventory)) {
+                                invItems = ent.inventory.filter(item => item !== null && item !== undefined && item !== 'None' && item !== '');
+                            } else if (typeof ent.inventory === 'object') {
+                                invItems = Object.values(ent.inventory).filter(item => item !== null && item !== undefined && item !== 'None' && item !== '');
+                            }
                         }
-                        document.getElementById('infoInventory').innerHTML = invText;
+                        document.getElementById('infoInventory').innerHTML = invItems.join('<br>');
 
                     } else if (ent.type === 'chest') {
-                        infoTitle.innerText = "Chest Details";
+                        infoTitle.innerText = "Chest";
                         hpRow.classList.add('hidden');
                         playerStats.classList.add('hidden');
                         zoneRow.classList.remove('hidden');
 
-                        const ex = Math.floor(ent.targetX || ent.x);
-                        const ey = Math.floor(ent.targetY || ent.y);
+                        const ex = Math.round(ent.x);
+                        const ey = Math.round(ent.y);
                         let zoneName = "UNKNOWN";
                         if (fullWorldMap[ey] && fullWorldMap[ey][ex]) {
                             zoneName = fullWorldMap[ey][ex].zone || "UNKNOWN";
                         }
                         document.getElementById('infoZone').innerText = zoneName.toUpperCase();
                     } else {
-                        infoTitle.innerText = "Entity Details";
+                        infoTitle.innerText = "Entity";
                         hpRow.classList.remove('hidden');
                         zoneRow.classList.remove('hidden');
                         playerStats.classList.add('hidden');
 
-                        const ex = Math.floor(ent.targetX || ent.x);
-                        const ey = Math.floor(ent.targetY || ent.y);
+                        const ex = Math.round(ent.x);
+                        const ey = Math.round(ent.y);
                         let zoneName = "UNKNOWN";
                         if (fullWorldMap[ey] && fullWorldMap[ey][ex]) {
                             zoneName = fullWorldMap[ey][ex].zone || "UNKNOWN";

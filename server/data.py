@@ -1,6 +1,10 @@
 import copy
 import os
 
+def getXbyTypeIdInItems(x, y):
+    """returns value from key {x} in item that has typeId {y}"""
+    return next((item[x] for item in items if item['typeId'] == y), None)
+
 def getObjectInfo(id):
     for object in objects:
         if object['typeId'] == id:
@@ -19,6 +23,7 @@ worldFilePath = os.path.join(os.path.dirname(os.path.abspath(__file__)), "world.
 playersFilePath = os.path.join(os.path.dirname(os.path.abspath(__file__)), "players.pkl")
 dirs = ['north', 'east', 'south', 'west']
 spawnableBlockIds = [0, 17, 20, 6, 13]
+noPVPzones = ['forest']
 spawnPos = (50, 75)
 maxEnemiesInZone = {
     'forest': 35,
@@ -65,13 +70,13 @@ objects = [
     {'type': 'block', 'walkable': False, 'typeId': 21, 'swimmable': False},
     {'type': 'block', 'walkable': True, 'typeId': 22, 'swimmable': False},
     {'type': 'block', 'walkable': True, 'typeId': 26, 'swimmable': False},
-    {'type': 'enemy', 'typeId': 4, 'health': 20, 'damage': 0, 'speed': 0.5, 'behavior': 'passive', 'sight': 1, 'pause': 0.25, 'allowedBlocks': [0, 1], 'drops': [28]},
-    {'type': 'enemy', 'typeId': 5, 'health': 40, 'damage': 25, 'speed': 0.7, 'behavior': 'aggressive', 'sight': 5, 'pause': 0.23, 'allowedBlocks': [20, 22], 'drops': [38]},
-    {'type': 'enemy', 'typeId': 18, 'health': 80, 'damage': 50, 'speed': 0.8, 'behavior': 'aggressive', 'sight': 7, 'pause': 0.2, 'allowedBlocks': [17, 19], 'drops': [34]},
-    {'type': 'enemy', 'typeId': 23, 'health': 60, 'damage': 40, 'speed': 0.6, 'behavior': 'aggressive', 'sight': 5, 'pause': 0.23, 'allowedBlocks': [6], 'drops': [32]},
-    {'type': 'enemy', 'typeId': 24, 'health': 200, 'damage': 70, 'speed': 1, 'behavior': 'aggressive', 'sight': 9, 'pause': 0.18, 'allowedBlocks': [13, 3], 'drops': [36]},
+    {'type': 'enemy', 'typeId': 4, 'health': 20, 'damage': 0, 'speed': 0.8, 'behavior': 'passive', 'sight': 1, 'walkPause': 0.2, 'attackPause': 0.0, 'allowedBlocks': [0, 1], 'drops': [28]},
+    {'type': 'enemy', 'typeId': 5, 'health': 40, 'damage': 30, 'speed': 0.9, 'behavior': 'aggressive', 'sight': 5, 'walkPause': 0.18, 'attackPause': 0.6, 'allowedBlocks': [20, 22], 'drops': [38]},
+    {'type': 'enemy', 'typeId': 18, 'health': 80, 'damage': 50, 'speed': 0.9, 'behavior': 'aggressive', 'sight': 7, 'walkPause': 0.18, 'attackPause': 0.6, 'allowedBlocks': [17, 19], 'drops': [34]},
+    {'type': 'enemy', 'typeId': 23, 'health': 60, 'damage': 40, 'speed': 0.9, 'behavior': 'aggressive', 'sight': 5, 'walkPause': 0.18, 'attackPause': 0.6, 'allowedBlocks': [6], 'drops': [32]},
+    {'type': 'enemy', 'typeId': 24, 'health': 200, 'damage': 70, 'speed': 0.95, 'behavior': 'aggressive', 'sight': 9, 'walkPause': 0.15, 'attackPause': 0.6, 'allowedBlocks': [13, 3], 'drops': [36]},
+    {'type': 'player', 'typeId': 27, 'health': 100, 'damage': 15, 'speed': 1, 'sight': 5, 'walkPause': 0.15, 'attackPause': 0.5, 'regeneration': 1, 'allowedBlocks': [0, 6, 20, 17, 13, 1, 3, 9, 19, 22], 'swimmingSkill': 0, 'inventory': [], 'graves': {}, 'equipped': {'head': None, 'back': None, 'hand': None, 'feet': None}, 'chestInventory': [], 'inventorySpace': 10},
     {'type': 'grave', 'typeId': 25, 'drops': []},
-    {'type': 'player', 'typeId': 27, 'health': 100, 'damage': 15, 'speed': 1, 'sight': 5, 'pause': 0.18, 'regeneration': 2, 'allowedBlocks': [0, 6, 20, 17, 13, 1, 3, 9, 19, 22], 'swimmingSkill': 0, 'inventory': [], 'graves': {}, 'equipped': {'head': None, 'back': None, 'hand': None, 'feet': None}, 'chestInventory': [], 'inventorySpace': 10},
     {'type': 'chest', 'typeId': 30, 'drops': []}
 ]
 
@@ -89,11 +94,11 @@ items = [
 ]
 
 entitySpawn = {
-    'forest': getObjectInfo(4),
-    'tundra': getObjectInfo(5),
-    'swamp': getObjectInfo(18),
-    'desert': getObjectInfo(23),
-    'volcano': getObjectInfo(24)
+    'forest': 4,
+    'tundra': 5,
+    'swamp': 18,
+    'desert': 23,
+    'volcano': 24
 }
 
 zones = [

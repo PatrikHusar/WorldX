@@ -36,8 +36,21 @@ class Entity:
             self.isMoving = False
             self.time = currentTime
 
+    def takeDamage(self, dmg):
+        self.entity['health'] -= dmg
+        if self.entity['health'] <= 0.0:
+            self.entity = data.getObjectInfo(self.entity['typeId'])
+            newPos = self.game.getRandomPos(self.game.world[int(self.y)][int(self.x)]['zone'])
+            self.game.updateEntityMovement((self.moveTargetX, self.moveTargetY), newPos, self.entityId)
+            self.isMoving = False
+            self.x = newPos[0]
+            self.y = newPos[1]
+            return self.entity['drops']
+        else:
+            return None
+
     def move(self, currentTime):
-        if self.isMoving or currentTime - self.time < self.entity['pause'] + self.startingPause:
+        if self.isMoving or currentTime - self.time < self.entity['walkPause'] + self.startingPause:
             return
         if self.time != 0:
             self.startingPause = 0.0
