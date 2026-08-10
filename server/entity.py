@@ -13,7 +13,8 @@ class Entity:
         self.moveTargetX = float(self.x)
         self.moveTargetY = float(self.y)
         self.isMoving = False
-        self.time = 0
+        self.lastActionTime = 0
+        self.lastAttackTime = 0
         self.offsets = {'north': (0, -1), 'east': (1, 0), 'south': (0, 1), 'west': (-1, 0)}
         self.startingPause = random.uniform(0.001, 1.001)
 
@@ -34,7 +35,7 @@ class Entity:
 
         if self.x == self.moveTargetX and self.y == self.moveTargetY:
             self.isMoving = False
-            self.time = currentTime
+            self.lastActionTime = currentTime
 
     def takeDamage(self, dmg):
         self.entity['health'] -= dmg
@@ -50,14 +51,14 @@ class Entity:
             return None
 
     def move(self, currentTime):
-        if self.isMoving or currentTime - self.time < self.entity['walkPause'] + self.startingPause:
+        if self.isMoving or currentTime - self.lastActionTime < self.entity['walkPause'] + self.startingPause:
             return
-        if self.time != 0:
+        if self.lastActionTime != 0:
             self.startingPause = 0.0
         if self.entity['behavior'] == 'passive':
             self.passive()
         elif self.entity['behavior'] == 'aggressive':
-            self.aggressive()
+            self.aggressive(currentTime)
 
     def canWalkOn(self, object):
         if object['block']['typeId'] in self.entity['allowedBlocks'] and object['entities'] == {}:
@@ -88,7 +89,7 @@ class Entity:
         if moveChoice is not None:
             self.executeStep(moveChoice)
 
-    def aggressive(self):
+    def aggressive(self, currentTime):
         sight = int(self.entity.get('sight', 3))
         width = sight * 2 + 1
         mapData = self.game.getMapPart(int(self.x) - sight, int(self.y) - sight, width, width)
@@ -98,11 +99,12 @@ class Entity:
         for rIdx, row in enumerate(mapData):
             for cIdx, cell in enumerate(row):
                 if 'entities' in cell:
-                    for entId, entObj in cell['entities'].items():
-                        if entObj.__class__.__name__ == "Player":
-                            targetX = int(self.x) - sight + cIdx
-                            targetY = int(self.y) - sight + rIdx
-                            break
+                    if cell['block']['typeId'] in self.entity['allowedBlocks']:
+                        for entId, entObj in cell['entities'].items():
+                            if entObj.__class__.__name__ == "Player":
+                                targetX = int(self.x) - sight + cIdx
+                                targetY = int(self.y) - sight + rIdx
+                                break
             if targetX is not None:
                 break
 
@@ -111,11 +113,20 @@ class Entity:
             return
 
         moveChoice = self.pathFind(mapData, targetX, targetY)
-        if moveChoice != True:
-            if moveChoice:
-                self.executeStep(moveChoice)
-            else:
-                self.passive()
+        if moveChoice == 'attack':
+            self.attack(currentTime)
+        elif moveChoice:
+            self.executeStep(moveChoice)
+        else:
+            self.passive()
+        
+    def attack(self, currentTime):
+        if currentTime - self.lastAttackTime < self.entity['attackPause']:
+            return
+        self.lastAttackTime = currentTime
+        for entity in list(self.game.world[int(self.y) + self.offsets[self.dir][1]][int(self.x) + self.offsets[self.dir][0]]['entities'].values()):
+            if entity.__class__.__name__ == 'Player':
+                entity.takeDamage(self.entity['damage'])
 
     def pathFind(self, mapPart, targetX, targetY):
         sight = int(self.entity['sight'])
@@ -131,7 +142,9 @@ class Entity:
                 if r + dy == targetR and c + dx == targetC:
                     if not path:
                         self.dir = direction
-                    return path[0] if path else True
+                        return 'attack'
+                    else:
+                        return path[0]
             for direction, (dx, dy) in self.offsets.items():
                 nr, nc = r + dy, c + dx
                 if 0 <= nr < width and 0 <= nc < width and (nr, nc) not in visited:

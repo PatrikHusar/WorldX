@@ -26,7 +26,7 @@ class Player:
     def takeDamage(self, dmg):
         self.player['health'] -= dmg
         if self.player['health'] <= 0.0:
-            self.player = data.getObjectInfo(self.entity['typeId'])
+            self.player = data.getObjectInfo(self.player['typeId'])
             newPos = data.spawnPos
             self.game.updateEntityMovement((self.moveTargetX, self.moveTargetY), newPos, self.playerId)
             self.isMoving = False
@@ -80,7 +80,12 @@ class Player:
                 noEntities = False
                 break
         if object['block']['typeId'] in self.player['allowedBlocks'] and noEntities == True:
-            return True
+            if not object['block']['swimmable'] == False:
+                if self.player['swimmingSkill'] >= object['block']['swimmable']:
+                    return True
+            else:
+                return True
+                
         return False
 
     def forward(self, currentTime):

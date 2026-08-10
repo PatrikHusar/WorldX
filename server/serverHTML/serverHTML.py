@@ -68,7 +68,7 @@ class ServerHTML:
         return jsonify({
             "map": fullMap,
             "maxSize": self.worldSize,
-            "spawnPos": getattr(data, 'spawnPos', [50, 75])
+            "spawnPos": data.spawnPos
         })
         
     def getEntitiesJson(self):
@@ -77,42 +77,42 @@ class ServerHTML:
         for item in all_objects:
             eX = float(item.x)
             eY = float(item.y)
-            eSpeed = getattr(item, 'speed', 5.0)
             if hasattr(item, 'chest'):
                 unique_id = item.chestId
-                type_id = item.chest.get('typeId', 10)
-                entity_type = "chest"
-                eDir = getattr(item, 'dir', 'north')
+                type_id = item.chest['typeId']
+                entity_type = item.chest['type']
                 eHp = 100
                 eEquipped = []
-                eInventory = item.chest.get('drops', [])
+                eInventory = []
                 eSight = 0
                 eSpeed = 0
             else:
-                raw_type = getattr(item, 'type', item.__class__.__name__).lower()
+                raw_type = item.__class__.__name__.lower()
                 
-                if raw_type == "player" or hasattr(item, 'playerId'):
-                    entity_type = "player"
+                if raw_type == "player":
+                    entity_type = item.player['type']
+                    eSpeed = item.player['speed']
                     unique_id = item.playerId
-                    type_id = item.player.get('typeId', 27) if hasattr(item, 'player') else 27
-                    eSight = item.player.get('sight', 5) if hasattr(item, 'player') else getattr(item, 'sight', 5)
-                    eHp = getattr(item, 'hp', 100)
-                    raw_equipped = item.player.get('equipped', {}) if hasattr(item, 'player') else {}
+                    type_id = item.player['typeId']
+                    eSight = item.player['sight']
+                    eHp = item.player['health']
+                    raw_equipped = item.player['equipped']
                     if isinstance(raw_equipped, dict):
                         eEquipped = [[slot, itm] for slot, itm in raw_equipped.items()]
                     else:
                         eEquipped = raw_equipped
-                    eInventory = item.player.get('inventory', []) if hasattr(item, 'player') else []
+                    eInventory = item.player['inventory']
                 else:
-                    entity_type = "entity"
-                    unique_id = item.entityId if hasattr(item, 'entityId') else getattr(item, 'id', 0)
-                    type_id = item.entity.get('typeId', 4) if hasattr(item, 'entity') else 4
-                    eSight = item.entity.get('sight', 3) if hasattr(item, 'entity') else getattr(item, 'sight', 3)
-                    eHp = item.entity.get('health', 100) if hasattr(item, 'entity') else getattr(item, 'hp', 100)
+                    eSpeed = item.entity['speed']
+                    entity_type = item.entity['type']
+                    unique_id = item.entityId
+                    type_id = item.entity['typeId']
+                    eSight = item.entity['sight']
+                    eHp = item.entity['health']
                     eEquipped = []
                     eInventory = []
 
-                eDir = getattr(item, 'dir', 'south')
+            eDir = item.dir
 
             entitiesList.append({
                 "id": unique_id,
