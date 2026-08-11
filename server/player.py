@@ -9,6 +9,7 @@ class Player:
         self.isMoving = False
         self.eDetails = player
         self.game = game
+        self.name = ''
         self.password = password
         self.offsets = {'north': (0, -1), 'east': (1, 0), 'south': (0, 1), 'west': (-1, 0)}
         self.moveTargetX = float(self.x)
@@ -32,7 +33,7 @@ class Player:
                     if item:
                         items.append(item)
                 self.game.createGrave(items, (self.moveTargetX, self.moveTargetY))
-            self.eDetails = data.getObjectInfo(self.eDetails['typeId'])
+            self.eDetails = self.game.getObjectInfo(self.eDetails['typeId'])
             newPos = data.spawnPos
             self.game.updateEntityMovement((self.moveTargetX, self.moveTargetY), newPos, self.myId)
             self.isMoving = False
@@ -53,7 +54,7 @@ class Player:
                             for id in itemIds:
                                 if self.eDetails['inventorySpace'] >= 1:
                                     self.eDetails['inventorySpace'] -= 1
-                                    self.eDetails['inventory'].append(data.getXbyTypeIdInItems('name', id))
+                                    self.eDetails['inventory'].append(self.game.getXbyTypeIdInItems('name', id))
 
     def interact(self, action=None):
         entities = list(self.game.world[int(self.y) + self.offsets[self.dir][1]][int(self.x) + self.offsets[self.dir][0]]['entities'].values())
@@ -67,15 +68,16 @@ class Player:
 
     def loadInventoryWithItems(self, ids, haveInvLimits=True):
         for id in ids:
-            itemName = data.getXbyTypeIdInItems('name', id)
+            itemName = self.game.getXbyTypeIdInItems('name', id)
             if itemName:
                 if self.eDetails['inventorySpace'] >= 1 or haveInvLimits == False:
                     self.eDetails['inventorySpace'] -= 1
                     self.eDetails['inventory'].append(itemName)
 
-    def restorePlayer(self, chestInventory, inventory):
+    def restorePlayer(self, chestInventory, inventory, name):
         self.eDetails['chestInventory'] = chestInventory
         self.eDetails['inventory'] = inventory
+        self.name = name
 
     def turnTowards(self, currentTime, dir):
         if currentTime - self.lastActionTime < self.eDetails['walkPause'] or self.isMoving:

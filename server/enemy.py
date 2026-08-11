@@ -40,7 +40,7 @@ class Enemy:
     def takeDamage(self, dmg):
         self.eDetails['health'] -= dmg
         if self.eDetails['health'] <= 0.0:
-            self.eDetails = data.getObjectInfo(self.eDetails['typeId'])
+            self.eDetails = self.game.getObjectInfo(self.eDetails['typeId'])
             newPos = self.game.getRandomPos(self.game.world[int(self.y)][int(self.x)]['zone'])
             self.game.updateEntityMovement((self.moveTargetX, self.moveTargetY), newPos, self.myId)
             self.isMoving = False

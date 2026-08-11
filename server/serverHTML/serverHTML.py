@@ -11,9 +11,9 @@ class ServerHTML:
         self.host = host
         self.port = port
         self.game = game
-        
+
         self.worldSize = data.worldSize
-        self.blockList = data.getObjectList('block')
+        self.blockList = self.game.getObjectList('block')
         
         self.pending_requests = []
 
@@ -68,7 +68,7 @@ class ServerHTML:
         return jsonify({
             "map": fullMap,
             "maxSize": self.worldSize,
-            "spawnPos": data.spawnPos
+            "spawnPos": getattr(data, 'spawnPos', [50, 75])
         })
         
     def getEntitiesJson(self):
@@ -78,26 +78,45 @@ class ServerHTML:
         for item in all_objects:
             eX = float(item.x)
             eY = float(item.y)
-            unique_id = item.myId
-            eDir = item.dir
+            unique_id = getattr(item, 'myId', 0)
+            eDir = getattr(item, 'dir', 'north')
+            eDetails = getattr(item, 'eDetails', {})
             
-            raw_type = item.__class__.__name__
-            entity_type = str(raw_type).lower()
+            class_name = item.__class__.__name__
+            if class_name == 'Grave':
+                entity_type = 'grave'
+            elif class_name == 'Chest':
+                entity_type = 'chest'
+            elif class_name == 'Player':
+                entity_type = 'player'
+            elif class_name == 'Enemy':
+                entity_type = 'enemy'
+            else:
+                entity_type = str(eDetails.get('type', class_name)).lower()
             
-            type_id = item.eDetails.get('typeId', 0)
-            eSpeed = item.eDetails.get('speed', 0)
-            eSight = item.eDetails.get('sight', 0)
+            entity_name = None
+            if entity_type == 'player':
+                entity_name = getattr(item, 'name', None)
+                if not entity_name and isinstance(eDetails, dict):
+                    entity_name = eDetails.get('name')
             
-            eHp = item.eDetails.get('hp', item.eDetails.get('health', 100))
+            type_id = eDetails.get('typeId', 0)
+            eSpeed = eDetails.get('speed', 0)
+            eSight = eDetails.get('sight', 0)
+            eHp = eDetails.get('hp', eDetails.get('health', None))
             
-            eEquipped = item.eDetails.get('equipped', [])
-            eInventory = item.eDetails.get('inventory', [])
+            if entity_type in ['grave', 'chest']:
+                eHp = None
+                
+            eEquipped = eDetails.get('equipped', [])
+            eInventory = eDetails.get('inventory', getattr(item, 'inventory', []))
             
             if isinstance(eEquipped, dict):
                 eEquipped = [[slot, itm] for slot, itm in eEquipped.items()]
             
             entitiesList.append({
                 "id": unique_id,
+                "name": entity_name,
                 "asset": f"{type_id}{eDir}",
                 "type": entity_type,
                 "hp": eHp,
@@ -211,14 +230,14 @@ class ServerHTML:
                     
                     <div id="hpRow" class="info-row-inline"><span class="info-label">HP:</span><span class="info-value" id="infoHp">N/A</span></div>
                     
-                    <div id="zoneRow" class="info-row-inline hidden"><span class="info-label">Zone:</span><span class="info-value" id="infoZone">N/A</span></div>
+                    <div id="zoneRow" class="info-row-inline"><span class="info-label">Zone:</span><span class="info-value" id="infoZone">N/A</span></div>
                     
                     <div id="statsContainer">
-                        <div class="info-row hidden" id="equippedRow">
+                        <div class="info-row" id="equippedRow">
                             <span class="info-label">Equipped:</span>
                             <span class="info-value" id="infoEquipped"></span>
                         </div>
-                        <div class="info-row hidden" id="inventoryRow">
+                        <div class="info-row" id="inventoryRow">
                             <span class="info-label">Inventory:</span>
                             <span class="info-value" id="infoInventory"></span>
                         </div>
@@ -372,6 +391,7 @@ class ServerHTML:
                                     existing.inventory = nEnt.inventory;
                                     existing.sight = nEnt.sight;
                                     existing.type = nEnt.type;
+                                    existing.name = nEnt.name;
                                 } else {
                                     nEnt.targetX = Number(nEnt.x);
                                     nEnt.targetY = Number(nEnt.y);
@@ -424,7 +444,7 @@ class ServerHTML:
                         item.className = 'player-item';
 
                         const label = document.createElement('span');
-                        label.innerText = `Player ${p.id}`;
+                        label.innerText = p.name;
 
                         const btn = document.createElement('button');
                         btn.className = 'teleport-btn';
@@ -722,7 +742,7 @@ class ServerHTML:
                         document.getElementById('infoHp').innerText = 'N/A';
                     }
 
-                    const entType = String(ent.type || '').toLowerCase();
+                    const entType = String(ent.type || '');
 
                     function renderInventory() {
                         let invItems = [];
@@ -733,11 +753,11 @@ class ServerHTML:
                                 invItems = Object.values(ent.inventory).filter(item => item !== null && item !== undefined && item !== 'None' && item !== '');
                             }
                         }
-                        document.getElementById('infoInventory').innerHTML = invItems.length > 0 ? invItems.join('<br>') : '<span style="color: #888;">(Empty)</span>';
+                        document.getElementById('infoInventory').innerHTML = invItems.length > 0 ? invItems.join('<br>') : '<span style="color: #888;"></span>';
                     }
 
                     if (entType === 'player') {
-                        infoTitle.innerText = `Player ${ent.id}`;
+                        infoTitle.innerText = ent.name;
                         hpRow.classList.remove('hidden');
                         zoneRow.classList.add('hidden');
                         equippedRow.classList.remove('hidden');
@@ -787,12 +807,27 @@ class ServerHTML:
                         }
                         document.getElementById('infoZone').innerText = zoneName.toUpperCase();
 
-                    } else {
+                    } else if (entType === 'enemy') {
                         infoTitle.innerText = "Enemy";
                         hpRow.classList.remove('hidden');
                         zoneRow.classList.remove('hidden');
                         equippedRow.classList.add('hidden');
                         inventoryRow.classList.add('hidden');
+
+                    } else {
+                        infoTitle.innerText = "Entity";
+                        hpRow.classList.remove('hidden');
+                        zoneRow.classList.remove('hidden');
+                        equippedRow.classList.add('hidden');
+                        inventoryRow.classList.add('hidden');
+                        
+                        const ex = Math.round(ent.x);
+                        const ey = Math.round(ent.y);
+                        let zoneName = "UNKNOWN";
+                        if (fullWorldMap[ey] && fullWorldMap[ey][ex]) {
+                            zoneName = fullWorldMap[ey][ex].zone || "UNKNOWN";
+                        }
+                        document.getElementById('infoZone').innerText = zoneName.toUpperCase();
                     }
 
                     infoPanel.classList.remove('hidden');

@@ -10,6 +10,7 @@ import time
 import random
 from chest import Chest
 from grave import Grave
+import copy
 
 class Game:
     def __init__(self):
@@ -40,17 +41,24 @@ class Game:
         for zone in data.entitySpawn.keys():
             for i in range(data.maxChestInZone[zone]):
                 self.entitiesPos[self.idCounter] = self.getRandomPos(zone)
-                details = data.getObjectInfo(30)
+                details = self.getObjectInfo(30)
                 details['drops'].append(random.choice(data.chestDrops[zone]))
                 chest = Chest(self.entitiesPos[self.idCounter], details, self.idCounter, self)
                 self.world[chest.y][chest.x]['entities'][self.idCounter] = chest
                 self.idCounter += 1
 
     def createPlayer(self, password, restore=False):
-        player = Player(data.spawnPos, data.getObjectInfo(27), self.idCounter, self, password)
+        player = Player(data.spawnPos, self.getObjectInfo(27), self.idCounter, self, password)
         self.idCounter += 1
         if restore:
-            player.restorePlayer(restore['chestInventory'], restore['inventory'])
+            player.restorePlayer(restore['chestInventory'], restore['inventory'], restore['name'])
+        else:
+            names = self.getPlayerNames()
+            for _ in range(100):
+                name = self.generatePlayerName(names)
+                if name:
+                    player.name = name
+                    break
         self.entitiesPos[player.myId] = (int(player.x), int(player.y))
         self.world[int(player.y)][int(player.x)]['entities'][player.myId] = player
         self.savePlayer(player)
@@ -61,11 +69,18 @@ class Game:
             return
         for playerPassword in players:
             self.createPlayer(playerPassword, players[playerPassword])
+    
+    def getPlayerNames(self):
+        names = []
+        for player in self.getEntitiesList('player'):
+            names.append(player.name)
+        return names
 
     def savePlayer(self, player):
         saveData = {}
         saveData['chestInventory'] = player.eDetails['chestInventory']
         saveData['inventory'] = player.eDetails['inventory']
+        saveData['name'] = player.name
         loadData = self.playerSaver.loadData()
         if loadData == None:
             loadData = {}
@@ -87,12 +102,12 @@ class Game:
             zoneType = zone['zone']
             for _ in range(data.maxEnemiesInZone[zoneType]):
                 self.entitiesPos[self.idCounter] = self.getRandomPos(zoneType)
-                enemy = Enemy(self.entitiesPos[self.idCounter], data.getObjectInfo(data.entitySpawn[zoneType]), self.idCounter, self)
+                enemy = Enemy(self.entitiesPos[self.idCounter], self.getObjectInfo(data.entitySpawn[zoneType]), self.idCounter, self)
                 self.world[int(enemy.y)][int(enemy.x)]['entities'][enemy.myId] = enemy
                 self.idCounter += 1
     
     def createGrave(self, inventory, pos):
-        grave = Grave(pos, data.getObjectInfo(25), self.idCounter, inventory)
+        grave = Grave(pos, self.getObjectInfo(25), self.idCounter, inventory)
         self.idCounter += 1
         self.world[int(grave.y)][int(grave.x)]['entities'][grave.myId] = grave
         self.entitiesPos[grave.myId] = (int(grave.x), int(grave.y))
@@ -152,7 +167,9 @@ class Game:
         for r in range(data.worldSize):
             row = []
             for c in range(data.worldSize):
-                row.append(data.zones[0])
+                object = data.zones[0]
+                object['block'] = self.getObjectInfo(object['block'])
+                row.append(object)
             self.world.append(row)
     def getMapPart(self, startX, startY, width, height):
         mapPart = []
@@ -180,8 +197,7 @@ class Game:
             try:
                 del self.adressToPassword[adress]
             except:
-                # already disconnected
-                pass
+                pass # already disconnected
         elif adress in self.adressToPassword:
             if playerMessage.startswith(tuple(['forward', 'left', 'right', 'turnTo:', 'interact:', 'attack'])):
                 self.getPlayerByPassword(self.adressToPassword[adress]).actions.append(playerMessage)
@@ -192,7 +208,7 @@ class Game:
         return None
 #     def changeBlock(self, x, y, newId):
 #         if self.checkIfInsideWorld(x, y, 0, 0):
-#             self.world[y][x] = data.getObjectInfo(newId)
+#             self.world[y][x] = self.getObjectInfo(newId)
 #             self.saver.saveWorld(self.world)
 #             return True
 #         return False
@@ -200,6 +216,26 @@ class Game:
     def getRandomPos(self, zone):
         """returns (x, y)"""
         return random.choice(self.zonePositions[zone])
+
+    def getXbyTypeIdInItems(self, x, y):
+        """returns value from key {x} in item that has typeId {y}"""
+        return next((item[x] for item in data.items if item['typeId'] == y), None)
+    def getObjectInfo(self, id):
+        for object in data.objects:
+            if object['typeId'] == id:
+                return copy.deepcopy(object)
+        return None
+    def getObjectList(self, type):
+        objectList = []
+        for object in data.objects:
+            if object['type'] == type:
+                objectList.append(object)
+        return objectList
+    def generatePlayerName(self, alreadyCreatedNames):
+        name = f"{random.choice(data.PREFIXES)}{random.choice(data.SUFFIXES)}{random.randint(10, 99)}"
+        if name not in alreadyCreatedNames:
+            return name
+        return None
 
 if __name__ == "__main__":
     game = Game()
