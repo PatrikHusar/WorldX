@@ -24,7 +24,8 @@ playersFilePath = os.path.join(os.path.dirname(os.path.abspath(__file__)), "play
 dirs = ['north', 'east', 'south', 'west']
 spawnableBlockIds = [0, 17, 20, 6, 13]
 noPVPzones = ['forest']
-spawnPos = (50, 75)
+# spawnPos = (50, 75)
+spawnPos = (19, 27)
 maxEnemiesInZone = {
     'forest': 35,
     'desert': 25,
@@ -70,13 +71,13 @@ objects = [
     {'type': 'block', 'walkable': False, 'typeId': 21, 'swimmable': False},
     {'type': 'block', 'walkable': True, 'typeId': 22, 'swimmable': False},
     {'type': 'block', 'walkable': True, 'typeId': 26, 'swimmable': False},
-    {'type': 'enemy', 'typeId': 4, 'health': 20, 'damage': 0, 'speed': 0.8, 'behavior': 'passive', 'sight': 1, 'walkPause': 0.2, 'attackPause': 0.0, 'allowedBlocks': [0, 1], 'drops': [28]},
-    {'type': 'enemy', 'typeId': 5, 'health': 40, 'damage': 20, 'speed': 0.9, 'behavior': 'aggressive', 'sight': 5, 'walkPause': 0.18, 'attackPause': 1.7, 'allowedBlocks': [20, 22], 'drops': [38]},
-    {'type': 'enemy', 'typeId': 18, 'health': 80, 'damage': 40, 'speed': 0.9, 'behavior': 'aggressive', 'sight': 7, 'walkPause': 0.18, 'attackPause': 1.5, 'allowedBlocks': [17, 19], 'drops': [34]},
-    {'type': 'enemy', 'typeId': 23, 'health': 65, 'damage': 30, 'speed': 0.9, 'behavior': 'aggressive', 'sight': 5, 'walkPause': 0.18, 'attackPause': 1.5, 'allowedBlocks': [6], 'drops': [32]},
-    {'type': 'enemy', 'typeId': 24, 'health': 200, 'damage': 50, 'speed': 0.95, 'behavior': 'aggressive', 'sight': 9, 'walkPause': 0.15, 'attackPause': 1.5, 'allowedBlocks': [13, 3], 'drops': [36]},
-    {'type': 'player', 'typeId': 27, 'health': 100, 'damage': 15, 'speed': 1, 'sight': 5, 'walkPause': 0.15, 'attackPause': 1.2, 'regeneration': 1, 'allowedBlocks': [0, 6, 20, 17, 13, 1, 3, 9, 19, 22], 'swimmingSkill': 0, 'inventory': [], 'graves': {}, 'equipped': {'head': None, 'back': None, 'hand': None, 'feet': None}, 'chestInventory': [], 'inventorySpace': 10},
-    {'type': 'grave', 'typeId': 25, 'drops': []},
+    {'type': 'enemy', 'typeId': 4, 'health': 20, 'damage': 0, 'speed': 0.8, 'behavior': 'passive', 'sight': 1, 'walkPause': 0.3, 'attackPause': 0.0, 'allowedBlocks': [0, 1], 'drops': [28]},
+    {'type': 'enemy', 'typeId': 5, 'health': 40, 'damage': 20, 'speed': 0.9, 'behavior': 'aggressive', 'sight': 5, 'walkPause': 0.22, 'attackPause': 2.5, 'allowedBlocks': [20, 22], 'drops': [38]},
+    {'type': 'enemy', 'typeId': 18, 'health': 80, 'damage': 40, 'speed': 0.9, 'behavior': 'aggressive', 'sight': 7, 'walkPause': 0.22, 'attackPause': 2.5, 'allowedBlocks': [17, 19], 'drops': [34]},
+    {'type': 'enemy', 'typeId': 23, 'health': 65, 'damage': 30, 'speed': 0.9, 'behavior': 'aggressive', 'sight': 5, 'walkPause': 0.22, 'attackPause': 2.5, 'allowedBlocks': [6], 'drops': [32]},
+    {'type': 'enemy', 'typeId': 24, 'health': 200, 'damage': 50, 'speed': 0.95, 'behavior': 'aggressive', 'sight': 9, 'walkPause': 0.2, 'attackPause': 2.2, 'allowedBlocks': [13, 3], 'drops': [36]},
+    {'type': 'player', 'typeId': 27, 'health': 100, 'damage': 15, 'speed': 1, 'sight': 5, 'walkPause': 0.18, 'attackPause': 1.5, 'regeneration': 1, 'allowedBlocks': [0, 6, 20, 17, 13, 1, 3, 9, 19, 22], 'swimmingSkill': 0, 'inventory': [], 'equipped': {'head': None, 'back': None, 'hand': None, 'feet': None}, 'chestInventory': [], 'inventorySpace': 10},
+    {'type': 'grave', 'typeId': 25, 'inventory': []},
     {'type': 'chest', 'typeId': 30, 'drops': []}
 ]
 

@@ -1,13 +1,13 @@
 import random
 import data
 
-class Entity:
+class Enemy:
     def __init__(self, pos, entity, id, game):
         self.x = float(pos[0])
         self.y = float(pos[1])
-        self.entityId = id
+        self.myId = id
         self.game = game
-        self.entity = entity
+        self.eDetails = entity
 
         self.dir = 'north'
         self.moveTargetX = float(self.x)
@@ -21,7 +21,7 @@ class Entity:
     def updatePhysics(self, deltaTime, currentTime):
         if not self.isMoving:
             return
-        step = self.entity['speed'] * deltaTime
+        step = self.eDetails['speed'] * deltaTime
 
         if self.x < self.moveTargetX:
             self.x = min(self.moveTargetX, self.x + step)
@@ -38,30 +38,30 @@ class Entity:
             self.lastActionTime = currentTime
 
     def takeDamage(self, dmg):
-        self.entity['health'] -= dmg
-        if self.entity['health'] <= 0.0:
-            self.entity = data.getObjectInfo(self.entity['typeId'])
+        self.eDetails['health'] -= dmg
+        if self.eDetails['health'] <= 0.0:
+            self.eDetails = data.getObjectInfo(self.eDetails['typeId'])
             newPos = self.game.getRandomPos(self.game.world[int(self.y)][int(self.x)]['zone'])
-            self.game.updateEntityMovement((self.moveTargetX, self.moveTargetY), newPos, self.entityId)
+            self.game.updateEntityMovement((self.moveTargetX, self.moveTargetY), newPos, self.myId)
             self.isMoving = False
             self.x = newPos[0]
             self.y = newPos[1]
-            return self.entity['drops']
+            return self.eDetails['drops']
         else:
             return None
 
     def move(self, currentTime):
-        if self.isMoving or currentTime - self.lastActionTime < self.entity['walkPause'] + self.startingPause:
+        if self.isMoving or currentTime - self.lastActionTime < self.eDetails['walkPause'] + self.startingPause:
             return
         if self.lastActionTime != 0:
             self.startingPause = 0.0
-        if self.entity['behavior'] == 'passive':
+        if self.eDetails['behavior'] == 'passive':
             self.passive()
-        elif self.entity['behavior'] == 'aggressive':
+        elif self.eDetails['behavior'] == 'aggressive':
             self.aggressive(currentTime)
 
     def canWalkOn(self, object):
-        if object['block']['typeId'] in self.entity['allowedBlocks'] and object['entities'] == {}:
+        if object['block']['typeId'] in self.eDetails['allowedBlocks'] and object['entities'] == {}:
             return True
         return False
 
@@ -87,10 +87,10 @@ class Entity:
         dirs.append(None)
         moveChoice = random.choice(dirs)
         if moveChoice is not None:
-            self.executeStep(moveChoice)
+            self.executeStep(moveChoice)            
 
     def aggressive(self, currentTime):
-        sight = int(self.entity.get('sight', 3))
+        sight = self.eDetails['sight']
         width = sight * 2 + 1
         mapData = self.game.getMapPart(int(self.x) - sight, int(self.y) - sight, width, width)
         
@@ -99,7 +99,7 @@ class Entity:
         for rIdx, row in enumerate(mapData):
             for cIdx, cell in enumerate(row):
                 if 'entities' in cell:
-                    if cell['block']['typeId'] in self.entity['allowedBlocks']:
+                    if cell['block']['typeId'] in self.eDetails['allowedBlocks']:
                         for entId, entObj in cell['entities'].items():
                             if entObj.__class__.__name__ == "Player":
                                 targetX = int(self.x) - sight + cIdx
@@ -121,15 +121,15 @@ class Entity:
             self.passive()
         
     def attack(self, currentTime):
-        if currentTime - self.lastAttackTime < self.entity['attackPause']:
+        if currentTime - self.lastAttackTime < self.eDetails['attackPause']:
             return
         self.lastAttackTime = currentTime
         for entity in list(self.game.world[int(self.y) + self.offsets[self.dir][1]][int(self.x) + self.offsets[self.dir][0]]['entities'].values()):
             if entity.__class__.__name__ == 'Player':
-                entity.takeDamage(self.entity['damage'])
+                entity.takeDamage(self.eDetails['damage'])
 
     def pathFind(self, mapPart, targetX, targetY):
-        sight = int(self.entity['sight'])
+        sight = int(self.eDetails['sight'])
         width = len(mapPart)
         startC, startR = sight, sight
         targetC = int(targetX) - int(self.x) + sight
@@ -161,4 +161,4 @@ class Entity:
         self.moveTargetY = float(newY)
         self.dir = moveChoice
         self.isMoving = True
-        self.game.updateEntityMovement((oldX, oldY), (newX, newY), self.entityId)
+        self.game.updateEntityMovement((oldX, oldY), (newX, newY), self.myId)

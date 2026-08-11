@@ -73,47 +73,29 @@ class ServerHTML:
         
     def getEntitiesJson(self):
         entitiesList = []
-        all_objects = self.game.getPlayersList() + self.game.getEntitiesList() + self.game.getChestsList()
+        all_objects = self.game.getEntitiesList()
+        
         for item in all_objects:
             eX = float(item.x)
             eY = float(item.y)
-            if hasattr(item, 'chest'):
-                unique_id = item.chestId
-                type_id = item.chest['typeId']
-                entity_type = item.chest['type']
-                eHp = 100
-                eEquipped = []
-                eInventory = []
-                eSight = 0
-                eSpeed = 0
-            else:
-                raw_type = item.__class__.__name__.lower()
-                
-                if raw_type == "player":
-                    entity_type = item.player['type']
-                    eSpeed = item.player['speed']
-                    unique_id = item.playerId
-                    type_id = item.player['typeId']
-                    eSight = item.player['sight']
-                    eHp = item.player['health']
-                    raw_equipped = item.player['equipped']
-                    if isinstance(raw_equipped, dict):
-                        eEquipped = [[slot, itm] for slot, itm in raw_equipped.items()]
-                    else:
-                        eEquipped = raw_equipped
-                    eInventory = item.player['inventory']
-                else:
-                    eSpeed = item.entity['speed']
-                    entity_type = item.entity['type']
-                    unique_id = item.entityId
-                    type_id = item.entity['typeId']
-                    eSight = item.entity['sight']
-                    eHp = item.entity['health']
-                    eEquipped = []
-                    eInventory = []
-
+            unique_id = item.myId
             eDir = item.dir
-
+            
+            raw_type = item.__class__.__name__
+            entity_type = str(raw_type).lower()
+            
+            type_id = item.eDetails.get('typeId', 0)
+            eSpeed = item.eDetails.get('speed', 0)
+            eSight = item.eDetails.get('sight', 0)
+            
+            eHp = item.eDetails.get('hp', item.eDetails.get('health', 100))
+            
+            eEquipped = item.eDetails.get('equipped', [])
+            eInventory = item.eDetails.get('inventory', [])
+            
+            if isinstance(eEquipped, dict):
+                eEquipped = [[slot, itm] for slot, itm in eEquipped.items()]
+            
             entitiesList.append({
                 "id": unique_id,
                 "asset": f"{type_id}{eDir}",
@@ -229,14 +211,14 @@ class ServerHTML:
                     
                     <div id="hpRow" class="info-row-inline"><span class="info-label">HP:</span><span class="info-value" id="infoHp">N/A</span></div>
                     
-                    <div id="zoneRow" class="info-row-inline"><span class="info-label">Zone:</span><span class="info-value" id="infoZone">N/A</span></div>
+                    <div id="zoneRow" class="info-row-inline hidden"><span class="info-label">Zone:</span><span class="info-value" id="infoZone">N/A</span></div>
                     
-                    <div id="playerOnlyStats">
-                        <div class="info-row">
+                    <div id="statsContainer">
+                        <div class="info-row hidden" id="equippedRow">
                             <span class="info-label">Equipped:</span>
                             <span class="info-value" id="infoEquipped"></span>
                         </div>
-                        <div class="info-row">
+                        <div class="info-row hidden" id="inventoryRow">
                             <span class="info-label">Inventory:</span>
                             <span class="info-value" id="infoInventory"></span>
                         </div>
@@ -709,11 +691,9 @@ class ServerHTML:
                     const clickY = e.clientY - rect.top;
                     const drawSize = baseBlockSize * zoomLevel;
                     
-                    // Presná desatinná pozícia kliknutia v hernom svete
                     const clickWorldFloatX = cameraC + (clickX / drawSize);
                     const clickWorldFloatY = cameraR + (clickY / drawSize);
                     
-                    // Dynamický hitbox: Kontroluje, či kliknutie spadlo do aktuálne animovaného obdĺžnika [ent.x, ent.x + 1] x [ent.y, ent.y + 1]
                     const clickedEntity = currentEntities.find(ent => {
                         return clickWorldFloatX >= ent.x && clickWorldFloatX <= (ent.x + 1.0) &&
                                clickWorldFloatY >= ent.y && clickWorldFloatY <= (ent.y + 1.0);
@@ -732,18 +712,37 @@ class ServerHTML:
                     const infoPanel = document.getElementById('infoPanel');
                     const hpRow = document.getElementById('hpRow');
                     const zoneRow = document.getElementById('zoneRow');
-                    const playerStats = document.getElementById('playerOnlyStats');
+                    const equippedRow = document.getElementById('equippedRow');
+                    const inventoryRow = document.getElementById('inventoryRow');
                     const infoTitle = document.getElementById('infoTitle');
 
-                    document.getElementById('infoHp').innerText = ent.hp;
+                    if (ent.hp !== undefined && ent.hp !== null) {
+                        document.getElementById('infoHp').innerText = ent.hp;
+                    } else {
+                        document.getElementById('infoHp').innerText = 'N/A';
+                    }
 
-                    if (ent.type === 'player') {
+                    const entType = String(ent.type || '').toLowerCase();
+
+                    function renderInventory() {
+                        let invItems = [];
+                        if (ent.inventory) {
+                            if (Array.isArray(ent.inventory)) {
+                                invItems = ent.inventory.filter(item => item !== null && item !== undefined && item !== 'None' && item !== '');
+                            } else if (typeof ent.inventory === 'object') {
+                                invItems = Object.values(ent.inventory).filter(item => item !== null && item !== undefined && item !== 'None' && item !== '');
+                            }
+                        }
+                        document.getElementById('infoInventory').innerHTML = invItems.length > 0 ? invItems.join('<br>') : '<span style="color: #888;">(Empty)</span>';
+                    }
+
+                    if (entType === 'player') {
                         infoTitle.innerText = `Player ${ent.id}`;
                         hpRow.classList.remove('hidden');
                         zoneRow.classList.add('hidden');
-                        playerStats.classList.remove('hidden');
+                        equippedRow.classList.remove('hidden');
+                        inventoryRow.classList.remove('hidden');
 
-                        // Ponechá názvy slotov (head:, chest:...), ale pri prázdnych hodnotách ukáže prázdny priestor
                         let eqHtml = "";
                         if (ent.equipped) {
                             if (Array.isArray(ent.equipped)) {
@@ -763,21 +762,21 @@ class ServerHTML:
                             }
                         }
                         document.getElementById('infoEquipped').innerHTML = eqHtml;
+                        renderInventory();
 
-                        let invItems = [];
-                        if (ent.inventory) {
-                            if (Array.isArray(ent.inventory)) {
-                                invItems = ent.inventory.filter(item => item !== null && item !== undefined && item !== 'None' && item !== '');
-                            } else if (typeof ent.inventory === 'object') {
-                                invItems = Object.values(ent.inventory).filter(item => item !== null && item !== undefined && item !== 'None' && item !== '');
-                            }
-                        }
-                        document.getElementById('infoInventory').innerHTML = invItems.join('<br>');
+                    } else if (entType === 'grave') {
+                        infoTitle.innerText = "Grave";
+                        hpRow.classList.add('hidden');
+                        zoneRow.classList.add('hidden');
+                        equippedRow.classList.add('hidden');
+                        inventoryRow.classList.remove('hidden');
+                        renderInventory();
 
-                    } else if (ent.type === 'chest') {
+                    } else if (entType === 'chest') {
                         infoTitle.innerText = "Chest";
                         hpRow.classList.add('hidden');
-                        playerStats.classList.add('hidden');
+                        equippedRow.classList.add('hidden');
+                        inventoryRow.classList.add('hidden');
                         zoneRow.classList.remove('hidden');
 
                         const ex = Math.round(ent.x);
@@ -787,19 +786,13 @@ class ServerHTML:
                             zoneName = fullWorldMap[ey][ex].zone || "UNKNOWN";
                         }
                         document.getElementById('infoZone').innerText = zoneName.toUpperCase();
+
                     } else {
-                        infoTitle.innerText = "Entity";
+                        infoTitle.innerText = "Enemy";
                         hpRow.classList.remove('hidden');
                         zoneRow.classList.remove('hidden');
-                        playerStats.classList.add('hidden');
-
-                        const ex = Math.round(ent.x);
-                        const ey = Math.round(ent.y);
-                        let zoneName = "UNKNOWN";
-                        if (fullWorldMap[ey] && fullWorldMap[ey][ex]) {
-                            zoneName = fullWorldMap[ey][ex].zone || "UNKNOWN";
-                        }
-                        document.getElementById('infoZone').innerText = zoneName.toUpperCase();
+                        equippedRow.classList.add('hidden');
+                        inventoryRow.classList.add('hidden');
                     }
 
                     infoPanel.classList.remove('hidden');
