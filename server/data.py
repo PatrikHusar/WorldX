@@ -7,6 +7,7 @@ dirs = ['north', 'east', 'south', 'west']
 spawnableBlockIds = [0, 17, 20, 6, 13]
 noPVPzones = ['forest']
 spawnPos = (50, 75)
+researchValue = 10
 maxEnemiesInZone = {
     'forest': 35,
     'desert': 25,
@@ -23,7 +24,7 @@ maxChestInZone = {
 }
 
 chestDrops = {
-    'forest': [29],
+    'forest': [29, 39],
     'desert': [31],
     'tundra': [37],
     'swamp': [33],
@@ -39,9 +40,9 @@ objects = [
     {'type': 'block', 'walkable': False, 'typeId': 7, 'swimmable': False},
     {'type': 'block', 'walkable': False, 'typeId': 8, 'swimmable': False},
     {'type': 'block', 'walkable': True, 'typeId': 9, 'swimmable': False},
-    {'type': 'block', 'walkable': False, 'typeId': 10, 'swimmable': False, 'interaction': 'openChest'},
-    {'type': 'block', 'walkable': False, 'typeId': 11, 'swimmable': False, 'interaction': 'craft'},
-    {'type': 'block', 'walkable': False, 'typeId': 12, 'swimmable': False, 'interaction': 'research'},
+    {'type': 'block', 'walkable': False, 'typeId': 10, 'swimmable': False},
+    {'type': 'block', 'walkable': False, 'typeId': 11, 'swimmable': False},
+    {'type': 'block', 'walkable': False, 'typeId': 12, 'swimmable': False},
     {'type': 'block', 'walkable': True, 'typeId': 13, 'swimmable': False},
     {'type': 'block', 'walkable': False, 'typeId': 14, 'swimmable': False},
     {'type': 'block', 'walkable': False, 'typeId': 15, 'swimmable': False},
@@ -57,22 +58,24 @@ objects = [
     {'type': 'enemy', 'typeId': 18, 'health': 80, 'damage': 40, 'speed': 0.9, 'behavior': 'aggressive', 'sight': 7, 'walkPause': 0.22, 'attackPause': 2.5, 'allowedBlocks': [17, 19], 'drops': [34]},
     {'type': 'enemy', 'typeId': 23, 'health': 65, 'damage': 30, 'speed': 0.9, 'behavior': 'aggressive', 'sight': 5, 'walkPause': 0.22, 'attackPause': 2.5, 'allowedBlocks': [6], 'drops': [32]},
     {'type': 'enemy', 'typeId': 24, 'health': 200, 'damage': 50, 'speed': 0.95, 'behavior': 'aggressive', 'sight': 9, 'walkPause': 0.2, 'attackPause': 2.2, 'allowedBlocks': [13, 3], 'drops': [36]},
-    {'type': 'player', 'typeId': 27, 'health': 100, 'damage': 15, 'speed': 1, 'sight': 5, 'walkPause': 0.18, 'attackPause': 1.5, 'regeneration': 1, 'allowedBlocks': [0, 6, 20, 17, 13, 1, 3, 9, 19, 22], 'swimmingSkill': 0, 'inventory': [], 'equipped': {'head': None, 'back': None, 'hand': None, 'feet': None}, 'chestInventory': [], 'inventorySpace': 10},
+    {'type': 'player', 'typeId': 27, 'health': 100, 'damage': 15, 'speed': 0.95, 'sight': 5, 'walkPause': 0.2, 'attackPause': 1.5, 'regeneration': 1, 'allowedBlocks': [0, 6, 20, 17, 13, 1, 3, 9, 19, 22], 'swimmingSkill': 0, 'inventory': [], 'equipped': {'head': None, 'back': None, 'hand': None, 'feet': None}, 'chestInventory': [], 'inventorySpace': 10, 'researchProgress': {}},
     {'type': 'grave', 'typeId': 25, 'inventory': []},
     {'type': 'chest', 'typeId': 30, 'drops': []}
 ]
 
-items = [
-    {'name': 'Anasite', 'recipe': None, 'typeId': 28, 'boosts': {}, 'bodySlot': None, 'research': 0.0},
-    {'name': 'Sylvanite', 'recipe': None, 'typeId': 29, 'boosts': {}, 'bodySlot': None, 'research': 0.0},
-    {'name': 'Fulgurite', 'recipe': None, 'typeId': 31, 'boosts': {}, 'bodySlot': None, 'research': 0.0},
-    {'name': 'Gland', 'recipe': None, 'typeId': 32, 'boosts': {}, 'bodySlot': None, 'research': 0.0},
-    {'name': 'Amber', 'recipe': None, 'typeId': 33, 'boosts': {}, 'bodySlot': None, 'research': 0.0},
-    {'name': 'Bogfang', 'recipe': None, 'typeId': 34, 'boosts': {}, 'bodySlot': None, 'research': 0.0},
-    {'name': 'Obsidianite', 'recipe': None, 'typeId': 35, 'boosts': {}, 'bodySlot': None, 'research': 0.0},
-    {'name': 'Pyraplasm', 'recipe': None, 'typeId': 36, 'boosts': {}, 'bodySlot': None, 'research': 0.0},
-    {'name': 'Borealite', 'recipe': None, 'typeId': 37, 'boosts': {}, 'bodySlot': None, 'research': 0.0},
-    {'name': 'Peltshard', 'recipe': None, 'typeId': 38, 'boosts': {}, 'bodySlot': None, 'research': 0.0}
+items = [ # 'recipe': {id: amount}
+    {'name': 'Anasite', 'recipe': {}, 'typeId': 28, 'boosts': {}, 'bodySlot': [], 'research': 0.0},
+    {'name': 'Sylvanite', 'recipe': {}, 'typeId': 29, 'boosts': {}, 'bodySlot': [], 'research': 0.0},
+    {'name': 'Fulgurite', 'recipe': {}, 'typeId': 31, 'boosts': {}, 'bodySlot': [], 'research': 0.0},
+    {'name': 'Gland', 'recipe': {}, 'typeId': 32, 'boosts': {}, 'bodySlot': [], 'research': 0.0},
+    {'name': 'Amber', 'recipe': {}, 'typeId': 33, 'boosts': {}, 'bodySlot': [], 'research': 0.0},
+    {'name': 'Bogfang', 'recipe': {}, 'typeId': 34, 'boosts': {}, 'bodySlot': [], 'research': 0.0},
+    {'name': 'Obsidianite', 'recipe': {}, 'typeId': 35, 'boosts': {}, 'bodySlot': [], 'research': 0.0},
+    {'name': 'Pyraplasm', 'recipe': {}, 'typeId': 36, 'boosts': {}, 'bodySlot': [], 'research': 0.0},
+    {'name': 'Borealite', 'recipe': {}, 'typeId': 37, 'boosts': {}, 'bodySlot': [], 'research': 0.0},
+    {'name': 'Peltshard', 'recipe': {}, 'typeId': 38, 'boosts': {}, 'bodySlot': [], 'research': 0.0},
+    {'name': 'recipe_light_boots_tier_1', 'recipe': {}, 'typeId': 39, 'boosts': {}, 'bodySlot': [], 'research': 0.0},
+    {'name': 'light_boots_tier_1', 'recipe': {29: 2}, 'typeId': 40, 'boosts': {'speed': 0.1}, 'bodySlot': ['feet'], 'research': 10.0}
 ]
 
 entitySpawn = {

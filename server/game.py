@@ -51,7 +51,7 @@ class Game:
         player = Player(data.spawnPos, self.getObjectInfo(27), self.idCounter, self, password)
         self.idCounter += 1
         if restore:
-            player.restorePlayer(restore['chestInventory'], restore['inventory'], restore['name'])
+            player.restorePlayer(restore['chestInventory'], restore['inventory'], restore['name'], restore['researchProgress'])
         else:
             names = self.getPlayerNames()
             for _ in range(100):
@@ -81,6 +81,7 @@ class Game:
         saveData['chestInventory'] = player.eDetails['chestInventory']
         saveData['inventory'] = player.eDetails['inventory']
         saveData['name'] = player.name
+        saveData['researchProgress'] = player.eDetails['researchProgress']
         loadData = self.playerSaver.loadData()
         if loadData == None:
             loadData = {}
@@ -199,12 +200,14 @@ class Game:
             except:
                 pass # already disconnected
         elif adress in self.adressToPassword:
-            if playerMessage.startswith(tuple(['forward', 'left', 'right', 'turnTo:', 'interact:', 'attack'])):
+            if playerMessage == 'getPos':
+                player = self.getPlayerByPassword(self.adressToPassword[adress])
+                return (player.x, player.y)
+            elif playerMessage == 'interact:show':
+                return self.getPlayerByPassword(self.adressToPassword[adress]).showInteract()
+            elif playerMessage.startswith(tuple(['forward', 'left', 'right', 'turnTo:', 'interact:', 'attack'])):
                 self.getPlayerByPassword(self.adressToPassword[adress]).actions.append(playerMessage)
-            else:
-                if playerMessage.startswith('getPos'):
-                    player = self.getPlayerByPassword(self.adressToPassword[adress])
-                    return (player.x, player.y)
+                
         return None
 #     def changeBlock(self, x, y, newId):
 #         if self.checkIfInsideWorld(x, y, 0, 0):
@@ -217,9 +220,9 @@ class Game:
         """returns (x, y)"""
         return random.choice(self.zonePositions[zone])
 
-    def getXbyTypeIdInItems(self, x, y):
-        """returns value from key {x} in item that has typeId {y}"""
-        return next((item[x] for item in data.items if item['typeId'] == y), None)
+    def getValue(self, x, y):
+        """returns value from key {x} in item that has in key {a} value {b}. y = [a, b]"""
+        return next((item[x] for item in data.items if item[y[0]] == y[1]), None)
     def getObjectInfo(self, id):
         for object in data.objects:
             if object['typeId'] == id:
