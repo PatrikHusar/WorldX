@@ -95,8 +95,14 @@ def is_pressed(klaves):
         return True
     return False
 
-def interact(action=None):
-    client.sendMessage(f'interact:{action}')
+def interact(action):
+    return client.sendMessage(f'interact:{action}')
 
 def attack():
     client.sendMessage('attack')
+
+def equip(item, slot):
+    client.sendMessage(f'equip:{item}|{slot}')
+
+def unequip(slot):
+    client.sendMessage(f'unequip:{slot}')
