@@ -18,24 +18,28 @@ class Player:
         self.lastAttackTime = 0
         self.actions = []
 
-    def equipItem(self, item, slot):
-        if slot in self.eDetails['equipped'] and item in self.eDetails['inventory'] and slot in item['bodySlot'] and self.eDetails['equipped'][slot] == None:
-            self.eDetails['inventory'].remove(item)
-            self.eDetails['inventorySpace'] += 1
-            self.eDetails['equipped'][slot] = item
-            boosts = self.game.getValue('boosts', ['name', item])
-            for boost in boosts:
-                self.eDetails[boost] += boosts[boost]
+    def equipItem(self, action):
+        item = action[:action.find('|')]
+        slot = action[action.find('|') + 1:]
+        if slot in self.eDetails['equipped']:
+            if item in self.eDetails['inventory'] and slot in self.game.getValue('bodySlot', ['name', item]) and self.eDetails['equipped'][slot] == None:
+                self.eDetails['inventory'].remove(item)
+                self.eDetails['inventorySpace'] += 1
+                self.eDetails['equipped'][slot] = item
+                boosts = self.game.getValue('boosts', ['name', item])
+                for boost in boosts:
+                    self.eDetails[boost] += boosts[boost]
 
     def unequipItem(self, slot):
         if slot in self.eDetails['equipped']:
-            item = self.eDetails['equipped'][slot]
-            self.eDetails['equipped'][slot] = None
-            self.eDetails['inventory'].append(item)
-            self.eDetails['inventorySpace'] -= 1
-            boosts = self.game.getValue('boosts', ['name', item])
-            for boost in boosts:
-                self.eDetails[boost] -= boosts[boost]
+            if not self.eDetails['equipped'][slot] == None:
+                item = self.eDetails['equipped'][slot]
+                self.eDetails['equipped'][slot] = None
+                self.eDetails['inventory'].append(item)
+                self.eDetails['inventorySpace'] -= 1
+                boosts = self.game.getValue('boosts', ['name', item])
+                for boost in boosts:
+                    self.eDetails[boost] -= boosts[boost]
 
     def storeItem(self, item):
         if item in self.eDetails['inventory']:
@@ -99,7 +103,7 @@ class Player:
         if entities:
             for entity in entities:
                 if not entity.__class__.__name__ == 'Chest':
-                    if entity.__class__.__name__ == 'Entity' or not self.game.world[int(self.y)][int(self.x)]['zone'] in data.noPVPzones:
+                    if entity.__class__.__name__ == 'Enemy' or not self.game.world[int(self.y)][int(self.x)]['zone'] in data.noPVPzones:
                         itemIds = entity.takeDamage(self.eDetails['damage'])
                         if itemIds:
                             for id in itemIds:
@@ -131,7 +135,10 @@ class Player:
     def showInteract(self):
         block = self.game.world[int(self.y) + self.offsets[self.dir][1]][int(self.x) + self.offsets[self.dir][0]]['block']
         if block['typeId'] == 12:
-            return self.eDetails['researchProgress']
+            recipeDict = {}
+            for item in self.eDetails['researchProgress']:
+                recipeDict[item] = self.eDetails['researchProgress'] / self.game.getValue('research', ['name', item])
+            return recipeDict
         elif block['typeId'] == 11:
             recipes = []
             for r in self.eDetails['researchProgress']:
@@ -144,6 +151,11 @@ class Player:
             return recipes
         elif block['typeId'] == 10:
             return self.eDetails['chestInventory']
+    def getData(self, message):
+        if message == 'getPos':
+            return (self.x, self.y)
+        elif message == 'interact:show':
+            return self.showInteract()
 
     def loadInventoryWithItems(self, ids, haveInvLimits=True):
         for id in ids:
@@ -153,15 +165,16 @@ class Player:
                     self.eDetails['inventorySpace'] -= 1
                     self.eDetails['inventory'].append(itemName)
 
-    def restorePlayer(self, chestInventory, inventory, name, research):
-        self.eDetails['chestInventory'] = chestInventory
-        self.eDetails['inventory'] = inventory
-        self.eDetails['researchProgress'] = research
-        self.name = name
+    def restorePlayer(self, restore):
+        self.eDetails['chestInventory'] = restore['chestInventory']
+        self.eDetails['inventory'] = restore['inventory']
+        self.eDetails['researchProgress'] = restore['researchProgress']
+        for slot in restore['equipped']:
+            self.equipItem(f'{restore['equipped']}|{slot}')
+        self.eDetails['inventorySpace'] -= len(self.eDetails['inventory'])
+        self.name = restore['name']
 
     def turnTowards(self, currentTime, dir):
-        if currentTime - self.lastActionTime < self.eDetails['walkPause'] or self.isMoving:
-            return
         self.lastActionTime = currentTime
         self.dir = dir
 
@@ -177,12 +190,9 @@ class Player:
                     return True
             else:
                 return True
-                
         return False
 
     def forward(self, currentTime):
-        if currentTime - self.lastActionTime < self.eDetails['walkPause'] or self.isMoving:
-            return
         self.lastActionTime = currentTime
         
         targetTileX = int(self.x + self.offsets[self.dir][0])
@@ -193,14 +203,10 @@ class Player:
                 self.executeStep()
 
     def turnLeft(self, currentTime):
-        if currentTime - self.lastActionTime < self.eDetails['walkPause'] or self.isMoving:
-            return
         self.lastActionTime = currentTime
         self.dir = data.dirs[data.dirs.index(self.dir) - 1]
 
     def turnRight(self, currentTime):
-        if currentTime - self.lastActionTime < self.eDetails['walkPause'] or self.isMoving:
-            return
         self.lastActionTime = currentTime
         self.dir = data.dirs[(data.dirs.index(self.dir) + 1) % 4]
     
@@ -252,3 +258,7 @@ class Player:
                     self.interact(act[9:])
             elif act.startswith('attack'):
                 self.attack(currentTime)
+            elif act.startswith('equip:'):
+                self.equipItem(act[6:])
+            elif act.startswith('unequip:'):
+                self.unequipItem(act[8:])

@@ -108,12 +108,25 @@ class ServerHTML:
             if entity_type in ['grave', 'chest']:
                 eHp = None
                 
+            def serialize_item(item_name):
+                if not item_name or item_name == 'None':
+                    return None
+                boosts = self.game.getValue('boosts', ['name', item_name]) or {}
+                return {"name": item_name, "boosts": boosts}
+
             eEquipped = eDetails.get('equipped', [])
             eInventory = eDetails.get('inventory', getattr(item, 'inventory', []))
             
             if isinstance(eEquipped, dict):
                 eEquipped = [[slot, itm] for slot, itm in eEquipped.items()]
-            
+            if isinstance(eEquipped, list):
+                eEquipped = [[slot, serialize_item(itm) if isinstance(itm, str) else itm] for [slot, itm] in eEquipped]
+
+            if isinstance(eInventory, dict):
+                eInventory = list(eInventory.values())
+            if isinstance(eInventory, list):
+                eInventory = [serialize_item(itm) if isinstance(itm, str) else itm for itm in eInventory]
+
             entitiesList.append({
                 "id": unique_id,
                 "name": entity_name,
@@ -129,6 +142,15 @@ class ServerHTML:
             })
             
         return jsonify(entitiesList)
+    def getDocumentationText(self):
+        doc_path = os.path.join(os.path.dirname(__file__), data.documentName)
+        if os.path.exists(doc_path):
+            try:
+                with open(doc_path, 'r', encoding='utf-8') as f:
+                    return f.read()
+            except Exception:
+                return "error when reading file"
+        return "file not found"
 
     def website(self):
         htmlCode = """
@@ -180,32 +202,113 @@ class ServerHTML:
                     backdrop-filter: blur(4px);
                 }
                 #playersPanel h3 { margin: 0 0 10px 0; color: #4CAF50; font-size: 16px; border-bottom: 1px solid #555; padding-bottom: 5px; }
-                .player-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; background: rgba(255, 255, 255, 0.05); padding: 6px 8px; border-radius: 4px; }
-                .player-item span { font-weight: bold; font-size: 13px; color: #fff; }
-                .teleport-btn { padding: 4px 8px; font-size: 12px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
-                .teleport-btn:hover { background: #388E3C; }
+                .player-item { display: flex; justify-content: flex-start; align-items: center; margin-bottom: 8px; background: rgba(255, 255, 255, 0.08); padding: 10px 14px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.08); width: 100%; color: #fff; font-weight: bold; font-size: 14px; text-align: left; cursor: pointer; transition: background 120ms ease, transform 120ms ease; touch-action: manipulation; }
+                .player-item:hover { background: rgba(76, 175, 80, 0.18); }
+                .player-item:active { background: rgba(76, 175, 80, 0.28); transform: translateY(1px); }
 
                 #infoPanel { 
                     position: absolute;
                     top: 15px;
                     right: 15px;
                     z-index: 10;
-                    background: rgba(30, 30, 30, 0.9); 
-                    border: 2px solid #4CAF50; 
-                    border-radius: 6px; 
-                    padding: 15px; 
-                    width: 250px; 
-                    text-align: left; 
-                    font-size: 14px; 
-                    box-shadow: 0px 4px 12px rgba(0,0,0,0.6); 
-                    backdrop-filter: blur(4px);
+                    background: rgba(30, 30, 30, 0.92);
+                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    border-radius: 12px;
+                    padding: 16px;
+                    width: 280px;
+                    max-height: calc(100% - 30px);
+                    overflow-y: auto;
+                    text-align: left;
+                    font-size: 14px;
+                    box-shadow: 0px 6px 20px rgba(0,0,0,0.24);
+                    backdrop-filter: blur(8px);
                 }
                 #infoPanel h3 { margin: 0 0 10px 0; color: #4CAF50; font-size: 16px; border-bottom: 1px solid #555; padding-bottom: 5px; }
                 .info-row { display: flex; flex-direction: column; margin-bottom: 8px; }
                 .info-row-inline { display: flex; justify-content: space-between; margin-bottom: 5px; }
                 .info-label { color: #aaa; font-weight: bold; margin-bottom: 2px; }
                 .info-value { color: #fff; word-break: break-word; line-height: 1.4; }
+                .info-section { margin-bottom: 14px; }
+                .info-section .info-label { margin-bottom: 6px; }
+                .info-section.inventory,
+                .info-section.equipped { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 8px 10px; }
+                .info-section.inventory .info-label,
+                .info-section.equipped .info-label { color: #cccccc; font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; }
+                .info-section.inventory .info-value,
+                .info-section.equipped .info-value { margin-top: 4px; }
+                .inventory-grid,
+                .equipped-grid { display: grid; grid-template-columns: 1fr; gap: 2px; margin-top: 4px; }
+                .item-box { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 6px 8px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03); }
+                
+                .detail-box { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; margin-bottom: 8px; }
+                .detail-box .info-label { margin-bottom: 0; }
+                
+                .item-name { font-weight: bold; color: #f0f0f0; margin-bottom: 4px; font-size: 13px; }
+                .item-subtext { color: #b4b4b4; font-size: 12px; margin-bottom: 4px; }
+                .item-boosts { color: #c8ffc8; font-size: 12px; margin-left: 4px; line-height: 1.2; }
+                .item-boosts div { margin-bottom: 3px; }
+                .boost-key { color: #b2ffb2; font-weight: 600; }
+                .boost-value { color: #e8f5e9; font-weight: 700; }
                 .hidden { display: none !important; }
+                
+                #docBtn {
+                    position: fixed;
+                    top: 10px;
+                    right: 10px;
+                    z-index: 9999;
+                    padding: 4px 8px;
+                    font-size: 11px;
+                    background-color: #2c3e50;
+                    color: #ffffff;
+                    border: 1px solid #455a64;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    font-weight: 600;
+                    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+                    transition: background-color 0.2s;
+                }
+
+                #docBtn:hover {
+                    background-color: #37474f;
+                }
+
+                .doc-modal-overlay {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100vw;
+                    height: 100vh;
+                    background-color: rgba(0, 0, 0, 0.75);
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    z-index: 10000;
+                    backdrop-filter: blur(2px);
+                }
+
+                .doc-modal-content {
+                    background-color: #1a1a1a;
+                    color: #e0e0e0;
+                    width: 65%;
+                    max-width: 800px;
+                    max-height: 80vh;
+                    padding: 20px;
+                    border-radius: 8px;
+                    border: 1px solid #444;
+                    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+                    overflow-y: auto;
+                    font-family: monospace;
+                }
+
+                .doc-modal-content pre {
+                    white-space: pre-wrap;
+                    word-wrap: break-word;
+                    font-family: inherit;
+                    font-size: 13px;
+                    line-height: 1.5;
+                    margin: 0;
+                    color: #dcdcdc;
+                }
             </style>
         </head>
         <body>
@@ -228,19 +331,27 @@ class ServerHTML:
                 <div id="infoPanel" class="hidden">
                     <h3 id="infoTitle">Entity Details</h3>
                     
-                    <div id="hpRow" class="info-row-inline"><span class="info-label">HP:</span><span class="info-value" id="infoHp">N/A</span></div>
+                    <div id="hpRow" class="info-row-inline item-box detail-box"><span class="info-label">HP:</span><span class="info-value" id="infoHp">N/A</span></div>
                     
-                    <div id="zoneRow" class="info-row-inline"><span class="info-label">Zone:</span><span class="info-value" id="infoZone">N/A</span></div>
+                    <div id="zoneRow" class="info-row-inline item-box detail-box"><span class="info-label">Zone:</span><span class="info-value" id="infoZone">N/A</span></div>
                     
                     <div id="statsContainer">
-                        <div class="info-row" id="equippedRow">
-                            <span class="info-label">Equipped:</span>
-                            <span class="info-value" id="infoEquipped"></span>
+                        <div class="info-row info-section equipped" id="equippedRow">
+                            <span class="info-label">Equipped</span>
+                            <div class="info-value" id="infoEquipped"></div>
                         </div>
-                        <div class="info-row" id="inventoryRow">
-                            <span class="info-label">Inventory:</span>
-                            <span class="info-value" id="infoInventory"></span>
+                        <div class="info-row info-section inventory" id="inventoryRow">
+                            <span class="info-label">Inventory</span>
+                            <div class="info-value" id="infoInventory"></div>
                         </div>
+                    </div>
+                </div>
+
+                <button id="docBtn" onclick="openDocModal()">Documentation</button>
+
+                <div id="docModal" class="doc-modal-overlay" style="display: none;" onclick="closeDocModal(event)">
+                    <div class="doc-modal-content" onclick="event.stopPropagation()">
+                        <pre id="docText">{{ docContent }}</pre>
                     </div>
                 </div>
             </div>
@@ -439,25 +550,28 @@ class ServerHTML:
                         return;
                     }
 
+                    function openPlayerPanel(player) {
+                        teleportToPlayer(player.id);
+                        selectedEntity = player.id;
+                        showEntityDetails(player);
+                    }
+
                     players.forEach(p => {
-                        const item = document.createElement('div');
+                        const item = document.createElement('button');
+                        item.type = 'button';
                         item.className = 'player-item';
+                        item.innerText = p.name || `Player ${p.id}`;
 
-                        const label = document.createElement('span');
-                        label.innerText = p.name;
+                        item.addEventListener('pointerdown', (e) => {
+                            e.preventDefault();
+                            openPlayerPanel(p);
+                        });
 
-                        const btn = document.createElement('button');
-                        btn.className = 'teleport-btn';
-                        btn.innerText = 'Teleport';
-                        
-                        btn.onpointerdown = (e) => e.stopPropagation();
-                        btn.onclick = (e) => {
-                            e.stopPropagation();
-                            teleportToPlayer(p.id);
-                        };
+                        item.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            openPlayerPanel(p);
+                        });
 
-                        item.appendChild(label);
-                        item.appendChild(btn);
                         container.appendChild(item);
                     });
                 }
@@ -467,8 +581,8 @@ class ServerHTML:
                     const visibleCols = canvas.width / drawSize;
                     const visibleRows = canvas.height / drawSize;
 
-                    cameraC = Math.max(0, Math.min(x - (visibleCols / 2), maxWorldSize - 1));
-                    cameraR = Math.max(0, Math.min(y - (visibleRows / 2), maxWorldSize - 1));
+                    cameraC = Math.max(0, Math.min((x + 0.5) - (visibleCols / 2), maxWorldSize - 1));
+                    cameraR = Math.max(0, Math.min((y + 0.5) - (visibleRows / 2), maxWorldSize - 1));
                 }
 
                 function teleportToPlayer(playerId) {
@@ -753,35 +867,82 @@ class ServerHTML:
                                 invItems = Object.values(ent.inventory).filter(item => item !== null && item !== undefined && item !== 'None' && item !== '');
                             }
                         }
-                        document.getElementById('infoInventory').innerHTML = invItems.length > 0 ? invItems.join('<br>') : '<span style="color: #888;"></span>';
+
+                        if (invItems.length === 0) {
+                            document.getElementById('infoInventory').innerHTML = '<span style="color: #888;"></span>';
+                            return;
+                        }
+
+                        const inventoryHtml = invItems.map(item => {
+                            const itemName = (typeof item === 'string') ? item : (item.name || 'Unknown');
+                            let boostsHtml = '';
+                            const boosts = (item && typeof item === 'object') ? item.boosts : null;
+                            const bodySlot = (item && typeof item === 'object' && Array.isArray(item.bodySlot) && item.bodySlot.length > 0)
+                                ? `<div class="item-subtext">${item.bodySlot.join(', ')}</div>`
+                                : '';
+
+                            if (boosts && typeof boosts === 'object' && Object.keys(boosts).length > 0) {
+                                boostsHtml = '<div class="item-boosts">' + Object.entries(boosts)
+                                    .map(([key, value]) => {
+                                        const displayValue = Number(value) > 0 ? `+${value}` : value;
+                                        return `<div><span class="boost-key">${key}</span>: <span class="boost-value">${displayValue}</span></div>`;
+                                    })
+                                    .join('') + '</div>';
+                            }
+
+                            return `<div class="item-box"><div class="item-name">${itemName}</div>${bodySlot}${boostsHtml}</div>`;
+                        }).join('');
+
+                        document.getElementById('infoInventory').innerHTML = `<div class="inventory-grid">${inventoryHtml}</div>`;
+                    }
+
+                    function renderEquipped() {
+                        let equippedItems = [];
+                        if (ent.equipped) {
+                            if (Array.isArray(ent.equipped)) {
+                                equippedItems = ent.equipped.map(([slot, item]) => [slot, item]);
+                            } else if (typeof ent.equipped === 'object') {
+                                equippedItems = Object.entries(ent.equipped);
+                            }
+                        }
+
+                        if (equippedItems.length === 0) {
+                            document.getElementById('infoEquipped').innerHTML = '<span style="color: #888;"></span>';
+                            return;
+                        }
+
+                        const equippedHtml = equippedItems.map(([slot, item]) => {
+                            const itemName = (item === null || item === undefined || item === 'None' || item === '')
+                                ? ' '
+                                : ((typeof item === 'string') ? item : (item.name || 'Unknown'));
+                            const bodySlot = (item && typeof item === 'object' && Array.isArray(item.bodySlot) && item.bodySlot.length > 0)
+                                ? `<div class="item-subtext">${item.bodySlot.join(', ')}</div>`
+                                : '';
+                            let boostsHtml = '';
+                            const boosts = (item && typeof item === 'object') ? item.boosts : null;
+                            if (boosts && typeof boosts === 'object' && Object.keys(boosts).length > 0) {
+                                boostsHtml = '<div class="item-boosts">' + Object.entries(boosts)
+                                    .map(([key, value]) => {
+                                        const displayValue = Number(value) > 0 ? `+${value}` : value;
+                                        return `<div><span class="boost-key">${key}</span>: <span class="boost-value">${displayValue}</span></div>`;
+                                    })
+                                    .join('') + '</div>';
+                            }
+                            const title = itemName ? `${slot}: ${itemName}` : slot;
+                            return `<div class="item-box"><div class="item-name">${title}</div>${bodySlot}${boostsHtml}</div>`;
+                        }).join('');
+
+                        document.getElementById('infoEquipped').innerHTML = `<div class="equipped-grid">${equippedHtml}</div>`;
                     }
 
                     if (entType === 'player') {
-                        infoTitle.innerText = ent.name;
+                        infoTitle.innerText = ent.name || `Player ${ent.id}`;
                         hpRow.classList.remove('hidden');
                         zoneRow.classList.add('hidden');
                         equippedRow.classList.remove('hidden');
                         inventoryRow.classList.remove('hidden');
 
-                        let eqHtml = "";
-                        if (ent.equipped) {
-                            if (Array.isArray(ent.equipped)) {
-                                eqHtml = ent.equipped
-                                    .map(([slot, item]) => {
-                                        const val = (item === null || item === undefined || item === 'None') ? '' : item;
-                                        return `${slot}: ${val}`;
-                                    })
-                                    .join('<br>');
-                            } else if (typeof ent.equipped === 'object') {
-                                eqHtml = Object.entries(ent.equipped)
-                                    .map(([slot, item]) => {
-                                        const val = (item === null || item === undefined || item === 'None') ? '' : item;
-                                        return `${slot}: ${val}`;
-                                    })
-                                    .join('<br>');
-                            }
-                        }
-                        document.getElementById('infoEquipped').innerHTML = eqHtml;
+                        renderEquipped();
                         renderInventory();
 
                     } else if (entType === 'grave') {
@@ -814,6 +975,14 @@ class ServerHTML:
                         equippedRow.classList.add('hidden');
                         inventoryRow.classList.add('hidden');
 
+                        const ex = Math.round(ent.x);
+                        const ey = Math.round(ent.y);
+                        let zoneName = "UNKNOWN";
+                        if (fullWorldMap[ey] && fullWorldMap[ey][ex]) {
+                            zoneName = fullWorldMap[ey][ex].zone || "UNKNOWN";
+                        }
+                        document.getElementById('infoZone').innerText = zoneName.toUpperCase();
+
                     } else {
                         infoTitle.innerText = "Entity";
                         hpRow.classList.remove('hidden');
@@ -843,11 +1012,21 @@ class ServerHTML:
                         document.getElementById('infoPanel').classList.add('hidden');
                     }
                 }
+                
+                function openDocModal() {
+                    document.getElementById('docModal').style.display = 'flex';
+                }
+
+                function closeDocModal(event) {
+                    if (event.target.id === 'docModal') {
+                        document.getElementById('docModal').style.display = 'none';
+                    }
+                }
             </script>
         </body>
         </html>
         """
-        return render_template_string(htmlCode, blocksBackend=self.blockList)
+        return render_template_string(htmlCode, blocksBackend=self.blockList, docContent=self.getDocumentationText())
     
     def startServer(self):
         self.app.run(host=self.host, port=self.port, debug=False, use_reloader=False)

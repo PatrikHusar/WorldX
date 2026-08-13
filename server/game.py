@@ -51,7 +51,7 @@ class Game:
         player = Player(data.spawnPos, self.getObjectInfo(27), self.idCounter, self, password)
         self.idCounter += 1
         if restore:
-            player.restorePlayer(restore['chestInventory'], restore['inventory'], restore['name'], restore['researchProgress'])
+            player.restorePlayer(restore)
         else:
             names = self.getPlayerNames()
             for _ in range(100):
@@ -82,6 +82,7 @@ class Game:
         saveData['inventory'] = player.eDetails['inventory']
         saveData['name'] = player.name
         saveData['researchProgress'] = player.eDetails['researchProgress']
+        saveData['equipped'] = player.eDetails['equipped']
         loadData = self.playerSaver.loadData()
         if loadData == None:
             loadData = {}
@@ -186,6 +187,7 @@ class Game:
                 return player
         return None
     def processClientData(self, playerMessage, adress):
+        playerMessage = playerMessage.lower()
         if playerMessage.startswith('login:'):
             if adress in self.adressToPassword:
                 return 'login failed, only 1 account on computer is allowed'
@@ -201,11 +203,10 @@ class Game:
                 pass # already disconnected
         elif adress in self.adressToPassword:
             if playerMessage == 'getPos':
-                player = self.getPlayerByPassword(self.adressToPassword[adress])
-                return (player.x, player.y)
+                return self.getPlayerByPassword(self.adressToPassword[adress]).getData(playerMessage)
             elif playerMessage == 'interact:show':
-                return self.getPlayerByPassword(self.adressToPassword[adress]).showInteract()
-            elif playerMessage.startswith(tuple(['forward', 'left', 'right', 'turnTo:', 'interact:', 'attack'])):
+                return self.getPlayerByPassword(self.adressToPassword[adress]).getData(playerMessage)
+            elif playerMessage.startswith(tuple(['forward', 'left', 'right', 'turnTo:', 'interact:', 'attack', 'equip:', 'unequip:'])):
                 self.getPlayerByPassword(self.adressToPassword[adress]).actions.append(playerMessage)
                 
         return None

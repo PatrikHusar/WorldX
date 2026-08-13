@@ -3,6 +3,7 @@ import os
 worldSize = 180
 worldFilePath = os.path.join(os.path.dirname(os.path.abspath(__file__)), "world.pkl")
 playersFilePath = os.path.join(os.path.dirname(os.path.abspath(__file__)), "players.pkl")
+documentName = "documentation.txt"
 dirs = ['north', 'east', 'south', 'west']
 spawnableBlockIds = [0, 17, 20, 6, 13]
 noPVPzones = ['forest']
@@ -58,7 +59,7 @@ objects = [
     {'type': 'enemy', 'typeId': 18, 'health': 80, 'damage': 40, 'speed': 0.9, 'behavior': 'aggressive', 'sight': 7, 'walkPause': 0.22, 'attackPause': 2.5, 'allowedBlocks': [17, 19], 'drops': [34]},
     {'type': 'enemy', 'typeId': 23, 'health': 65, 'damage': 30, 'speed': 0.9, 'behavior': 'aggressive', 'sight': 5, 'walkPause': 0.22, 'attackPause': 2.5, 'allowedBlocks': [6], 'drops': [32]},
     {'type': 'enemy', 'typeId': 24, 'health': 200, 'damage': 50, 'speed': 0.95, 'behavior': 'aggressive', 'sight': 9, 'walkPause': 0.2, 'attackPause': 2.2, 'allowedBlocks': [13, 3], 'drops': [36]},
-    {'type': 'player', 'typeId': 27, 'health': 100, 'damage': 15, 'speed': 0.95, 'sight': 5, 'walkPause': 0.2, 'attackPause': 1.5, 'regeneration': 1, 'allowedBlocks': [0, 6, 20, 17, 13, 1, 3, 9, 19, 22], 'swimmingSkill': 0, 'inventory': [], 'equipped': {'head': None, 'back': None, 'hand': None, 'feet': None}, 'chestInventory': [], 'inventorySpace': 10, 'researchProgress': {}},
+    {'type': 'player', 'typeId': 27, 'health': 100, 'damage': 15, 'speed': 1.0, 'sight': 5, 'walkPause': 0.2, 'attackPause': 1.5, 'regeneration': 1, 'allowedBlocks': [0, 6, 20, 17, 13, 1, 3, 9, 19, 22], 'swimmingSkill': 0, 'inventory': [], 'equipped': {'head': None, 'back': None, 'hand': None, 'feet': None}, 'chestInventory': [], 'inventorySpace': 10, 'researchProgress': {}},
     {'type': 'grave', 'typeId': 25, 'inventory': []},
     {'type': 'chest', 'typeId': 30, 'drops': []}
 ]
