@@ -106,3 +106,6 @@ def equip(item, slot):
 
 def unequip(slot):
     client.sendMessage(f'unequip:{slot}')
+
+def setSkin(asciiSkin):
+    client.sendMessage(f'setSkin:{asciiSkin}')
