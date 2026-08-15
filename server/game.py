@@ -11,6 +11,8 @@ import random
 from chest import Chest
 from grave import Grave
 import copy
+from skinMaker import SkinMaker
+import inventory
 
 class Game:
     def __init__(self):
@@ -20,6 +22,7 @@ class Game:
         self.idCounter = 0
         self.adressToPassword = {}
         self.worldSaver = DataSaving(data.worldFilePath)
+        self.skinMake = SkinMaker(data.imagesFilePath)
         world = self.worldSaver.loadData()
         if world:
             self.world = world
@@ -27,7 +30,7 @@ class Game:
         else:
             self.createNewWorld()
             self.worldSaver.saveData(self.world)
-        self.playerSaver = DataSaving(data.playersFilePath)
+        self.playerSaver = DataSaving(data.playersDataFilePath)
         self.restorePlayers()
         self.TCPserver = Server(("0.0.0.0", 5001), self.processClientData)
         self.webServer = ServerHTML(host="0.0.0.0", port=5000, game=self)
@@ -59,6 +62,7 @@ class Game:
                 if name:
                     player.name = name
                     break
+            self.skinMake.createSkin(player.name, '')
         self.entitiesPos[player.myId] = (int(player.x), int(player.y))
         self.world[int(player.y)][int(player.x)]['entities'][player.myId] = player
         self.savePlayer(player)
@@ -77,23 +81,17 @@ class Game:
         return names
 
     def savePlayer(self, player):
-        saveData = {}
-        saveData['chestInventory'] = player.eDetails['chestInventory']
-        saveData['inventory'] = player.eDetails['inventory']
-        saveData['name'] = player.name
-        saveData['researchProgress'] = player.eDetails['researchProgress']
-        saveData['equipped'] = player.eDetails['equipped']
         loadData = self.playerSaver.loadData()
         if loadData == None:
             loadData = {}
-        loadData[player.password] = saveData
+        loadData[player.password] = inventory.savePlayerData(player)
         self.playerSaver.saveData(loadData)
 
     def initZonePositions(self):
         for y in range(data.worldSize):
             for x in range(data.worldSize):
                 zoneName = self.world[y][x]['zone']
-                if self.world[y][x]['block']['typeId'] in data.spawnableBlockIds:
+                if inventory.getBlockTypeId(self.world[y][x]['block']) in data.spawnableBlockIds:
                     if zoneName in self.zonePositions:
                         self.zonePositions[zoneName].append((x, y))
                     else:
@@ -187,7 +185,6 @@ class Game:
                 return player
         return None
     def processClientData(self, playerMessage, adress):
-        playerMessage = playerMessage.lower()
         if playerMessage.startswith('login:'):
             if adress in self.adressToPassword:
                 return 'login failed, only 1 account on computer is allowed'
@@ -206,7 +203,9 @@ class Game:
                 return self.getPlayerByPassword(self.adressToPassword[adress]).getData(playerMessage)
             elif playerMessage == 'interact:show':
                 return self.getPlayerByPassword(self.adressToPassword[adress]).getData(playerMessage)
-            elif playerMessage.startswith(tuple(['forward', 'left', 'right', 'turnTo:', 'interact:', 'attack', 'equip:', 'unequip:'])):
+            elif playerMessage.startswith(tuple(['setSkin:', 'equip:', 'unequip:'])):
+                self.getPlayerByPassword(self.adressToPassword[adress]).noMoveActions.append(playerMessage)
+            elif playerMessage.startswith(tuple(['forward', 'left', 'right', 'turnTo:', 'interact:', 'attack'])):
                 self.getPlayerByPassword(self.adressToPassword[adress]).actions.append(playerMessage)
                 
         return None
@@ -240,6 +239,8 @@ class Game:
         if name not in alreadyCreatedNames:
             return name
         return None
+    def setSkin(self, name, skin):
+        self.skinMake.createSkin(name, skin)
 
 if __name__ == "__main__":
     game = Game()

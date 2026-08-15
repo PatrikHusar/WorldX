@@ -2,7 +2,8 @@ import os
 
 worldSize = 180
 worldFilePath = os.path.join(os.path.dirname(os.path.abspath(__file__)), "world.pkl")
-playersFilePath = os.path.join(os.path.dirname(os.path.abspath(__file__)), "players.pkl")
+playersDataFilePath = os.path.join(os.path.dirname(os.path.abspath(__file__)), "players.pkl")
+imagesFilePath = "serverHTML/static/"
 documentName = "documentation.txt"
 dirs = ['north', 'east', 'south', 'west']
 spawnableBlockIds = [0, 17, 20, 6, 13]
@@ -16,6 +17,7 @@ maxEnemiesInZone = {
     'swamp': 30,
     'volcano': 20
 }
+
 maxChestInZone = {
     'forest': 40,
     'desert': 20,
@@ -59,7 +61,7 @@ objects = [
     {'type': 'enemy', 'typeId': 18, 'health': 80, 'damage': 40, 'speed': 0.9, 'behavior': 'aggressive', 'sight': 7, 'walkPause': 0.22, 'attackPause': 2.5, 'allowedBlocks': [17, 19], 'drops': [34]},
     {'type': 'enemy', 'typeId': 23, 'health': 65, 'damage': 30, 'speed': 0.9, 'behavior': 'aggressive', 'sight': 5, 'walkPause': 0.22, 'attackPause': 2.5, 'allowedBlocks': [6], 'drops': [32]},
     {'type': 'enemy', 'typeId': 24, 'health': 200, 'damage': 50, 'speed': 0.95, 'behavior': 'aggressive', 'sight': 9, 'walkPause': 0.2, 'attackPause': 2.2, 'allowedBlocks': [13, 3], 'drops': [36]},
-    {'type': 'player', 'typeId': 27, 'health': 100, 'damage': 15, 'speed': 1.0, 'sight': 5, 'walkPause': 0.2, 'attackPause': 1.5, 'regeneration': 1, 'allowedBlocks': [0, 6, 20, 17, 13, 1, 3, 9, 19, 22], 'swimmingSkill': 0, 'inventory': [], 'equipped': {'head': None, 'back': None, 'hand': None, 'feet': None}, 'chestInventory': [], 'inventorySpace': 10, 'researchProgress': {}},
+    {'type': 'player', 'typeId': 27, 'health': 100, 'damage': 15, 'speed': 1.0, 'sight': 5, 'walkPause': 0.2, 'attackPause': 1.5, 'regeneration': 1, 'allowedBlocks': [0, 6, 20, 17, 13, 1, 3, 9, 19, 22], 'swimmingSkill': 0, 'inventory': [], 'equipped': {'head': None, 'back': None, 'hand': None, 'feet': None}, 'chestInventory': [], 'inventorySpace': 10, 'researchProgress': {}, 'skinChangePause': 0.5},
     {'type': 'grave', 'typeId': 25, 'inventory': []},
     {'type': 'chest', 'typeId': 30, 'drops': []}
 ]
@@ -76,7 +78,7 @@ items = [ # 'recipe': {id: amount}
     {'name': 'Borealite', 'recipe': {}, 'typeId': 37, 'boosts': {}, 'bodySlot': [], 'research': 0.0},
     {'name': 'Peltshard', 'recipe': {}, 'typeId': 38, 'boosts': {}, 'bodySlot': [], 'research': 0.0},
     {'name': 'recipe_light_boots_tier_1', 'recipe': {}, 'typeId': 39, 'boosts': {}, 'bodySlot': [], 'research': 0.0},
-    {'name': 'light_boots_tier_1', 'recipe': {29: 2}, 'typeId': 40, 'boosts': {'speed': 0.1}, 'bodySlot': ['feet'], 'research': 10.0}
+    {'name': 'light_boots_tier_1', 'recipe': {29: 14, 28: 6}, 'typeId': 40, 'boosts': {'speed': 0.1}, 'bodySlot': ['feet'], 'research': 100.0}
 ]
 
 entitySpawn = {

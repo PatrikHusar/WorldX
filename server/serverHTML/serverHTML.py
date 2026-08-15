@@ -2,6 +2,7 @@ import os
 import threading
 from flask import Flask, jsonify, request, render_template_string
 import data
+import inventory
 
 class ServerHTML:
     def __init__(self, host, port, game):
@@ -12,7 +13,6 @@ class ServerHTML:
         self.port = port
         self.game = game
 
-        self.worldSize = data.worldSize
         self.blockList = self.game.getObjectList('block')
         
         self.pending_requests = []
@@ -33,115 +33,61 @@ class ServerHTML:
 
     def pollEntities(self):
         event = threading.Event()
-
         def resolve():
             event.set()
-
         self.pending_requests.append(resolve)
         event.wait(timeout=30.0)
-        
         if resolve in self.pending_requests:
             self.pending_requests.remove(resolve)
-            
         return jsonify({"status": "ok"})
 
     def getFullMapJson(self):
-        mapViewJs = self.game.getMapPart(0, 0, self.worldSize, self.worldSize)
-
+        mapViewJs = self.game.getMapPart(0, 0, data.worldSize, data.worldSize)
         fullMap = []
-        for r in range(len(mapViewJs)):
+        for row in mapViewJs:
             webRow = []
-            for c in range(len(mapViewJs[r])):
-                cell = mapViewJs[r][c]
-                if cell is None:
-                    webRow.append({"g": None, "zone": "unknown"})
-                else:
-                    groundId = None
-                    if cell.get('block') and isinstance(cell['block'], dict):
-                        groundId = cell['block'].get('typeId', cell['block'].get('id'))
-                    webRow.append({
-                        "g": groundId, 
-                        "zone": cell.get("zone", "unknown")
-                    })
+            for cell in row:
+                blockId = inventory.getBlockTypeId(cell['block'])
+                webRow.append({
+                    "g": blockId,
+                    "zone": cell["zone"]
+                })
             fullMap.append(webRow)
-
         return jsonify({
             "map": fullMap,
-            "maxSize": self.worldSize,
-            "spawnPos": getattr(data, 'spawnPos', [50, 75])
+            "maxSize": data.worldSize,
+            "spawnPos": data.spawnPos
         })
         
     def getEntitiesJson(self):
         entitiesList = []
-        all_objects = self.game.getEntitiesList()
-        
-        for item in all_objects:
-            eX = float(item.x)
-            eY = float(item.y)
-            unique_id = getattr(item, 'myId', 0)
-            eDir = getattr(item, 'dir', 'north')
-            eDetails = getattr(item, 'eDetails', {})
-            
-            class_name = item.__class__.__name__
-            if class_name == 'Grave':
-                entity_type = 'grave'
-            elif class_name == 'Chest':
-                entity_type = 'chest'
-            elif class_name == 'Player':
-                entity_type = 'player'
-            elif class_name == 'Enemy':
-                entity_type = 'enemy'
-            else:
-                entity_type = str(eDetails.get('type', class_name)).lower()
-            
-            entity_name = None
-            if entity_type == 'player':
-                entity_name = getattr(item, 'name', None)
-                if not entity_name and isinstance(eDetails, dict):
-                    entity_name = eDetails.get('name')
-            
-            type_id = eDetails.get('typeId', 0)
-            eSpeed = eDetails.get('speed', 0)
-            eSight = eDetails.get('sight', 0)
-            eHp = eDetails.get('hp', eDetails.get('health', None))
-            
-            if entity_type in ['grave', 'chest']:
-                eHp = None
-                
-            def serialize_item(item_name):
-                if not item_name or item_name == 'None':
+        entities = self.game.getEntitiesList()
+        for ent in entities:
+            eDir = inventory.getDir(ent)
+            entityType = ent.__class__.__name__.lower()
+            entityName = inventory.getName(ent)
+            def serializeItem(item):
+                if not item or item == 'None':
                     return None
-                boosts = self.game.getValue('boosts', ['name', item_name]) or {}
-                return {"name": item_name, "boosts": boosts}
-
-            eEquipped = eDetails.get('equipped', [])
-            eInventory = eDetails.get('inventory', getattr(item, 'inventory', []))
-            
-            if isinstance(eEquipped, dict):
-                eEquipped = [[slot, itm] for slot, itm in eEquipped.items()]
-            if isinstance(eEquipped, list):
-                eEquipped = [[slot, serialize_item(itm) if isinstance(itm, str) else itm] for [slot, itm] in eEquipped]
-
-            if isinstance(eInventory, dict):
-                eInventory = list(eInventory.values())
-            if isinstance(eInventory, list):
-                eInventory = [serialize_item(itm) if isinstance(itm, str) else itm for itm in eInventory]
-
+                boosts = self.game.getValue('boosts', ['name', item]) or {}
+                return {"name": item, "boosts": boosts}
             entitiesList.append({
-                "id": unique_id,
-                "name": entity_name,
-                "asset": f"{type_id}{eDir}",
-                "type": entity_type,
-                "hp": eHp,
-                "equipped": eEquipped,
-                "inventory": eInventory,
-                "x": eX,
-                "y": eY,
-                "speed": eSpeed,
-                "sight": int(eSight)
+                "id": inventory.getMyId(ent),
+                "name": entityName,
+                "asset": entityName if entityType == 'player' else f"{inventory.getTypeId(ent)}{eDir}",
+                "type": entityType,
+                "hp": inventory.getHealth(ent),
+                "dir": eDir,
+                "equipped": [[slot, itm] for slot, itm in inventory.getEquipped(ent).items()],
+                "inventory": [serializeItem(itm) for itm in inventory.getInventory(ent)],
+                "x": float(ent.x),
+                "y": float(ent.y),
+                "speed": inventory.getSpeed(ent),
+                "sight": int(inventory.getSight(ent)),
+                "lastSkinUpdate": getattr(ent, 'lastSkinUpdate', 0)
             })
-            
         return jsonify(entitiesList)
+
     def getDocumentationText(self):
         doc_path = os.path.join(os.path.dirname(__file__), data.documentName)
         if os.path.exists(doc_path):
@@ -357,6 +303,18 @@ class ServerHTML:
             </div>
 
             <script>
+                function formatWebPath(rawPath) {
+                    let p = rawPath.replace("serverHTML/static/", "static/");
+                    if (!p.startsWith("/")) p = "/" + p;
+                    if (!p.endsWith("/")) p = p + "/";
+                    return p;
+                }
+
+                const imagesBasePath = formatWebPath("{{ imagesFilePath }}");
+                const playerImagePath = imagesBasePath;
+                const entitiesImagePath = imagesBasePath;
+                const blocksImagePath = imagesBasePath;
+
                 const canvas = document.getElementById('gameCanvas'); 
                 const canvasContainer = document.getElementById('canvasContainer');
                 const ctx = canvas.getContext('2d');
@@ -399,7 +357,7 @@ class ServerHTML:
                 const textures = {};
                 let loadedImagesCount = 0;
 
-                const assetsToLoad = ["26", "27", "27north", "27east", "27south", "27west", "10", "10north"]; 
+                const assetsToLoad = ["26", "10", "10north"];
                 blocksConfig.forEach(block => {
                     const bId = (block.typeId !== undefined) ? block.typeId : block.id;
                     if (bId !== undefined) {
@@ -415,7 +373,7 @@ class ServerHTML:
 
                 assetsToLoad.forEach(assetName => {
                     const img = new Image();
-                    img.src = `/static/${assetName}.png`;
+                    img.src = `${blocksImagePath}${assetName}.png`;
                     img.onload = function() {
                         textures[assetName] = img;
                         checkAllLoaded();
@@ -433,22 +391,37 @@ class ServerHTML:
                     }
                 }
 
-                function loadAndRegisterAsset(assetName) {
-                    if (textures[assetName] === undefined) {
-                        textures[assetName] = "loading"; 
+                function loadAndRegisterAsset(assetName, type, forceReload = false, cacheTimestamp = null) {
+                    let path = (type === 'player') ? playerImagePath : entitiesImagePath;
+                    
+                    const cacheBusterTime = cacheTimestamp !== null ? cacheTimestamp : Date.now();
+
+                    if (textures[assetName] === undefined || (type === 'player' && forceReload)) {
+                        if (textures[assetName] === undefined) {
+                            textures[assetName] = "loading"; 
+                        }
                         const img = new Image();
-                        img.src = `/static/${assetName}.png`;
+                        const cacheBuster = (type === 'player') ? `?t=${cacheBusterTime}` : '';
+                        img.src = `${path}${assetName}.png${cacheBuster}`;
                         img.onload = () => { textures[assetName] = img; };
-                        img.onerror = () => { textures[assetName] = null; };
+                        img.onerror = () => { 
+                            if (!textures[assetName] || textures[assetName] === "loading") {
+                                textures[assetName] = null; 
+                            }
+                        };
                     }
 
                     const baseAsset = assetName.replace(/(north|south|east|west)/g, '');
-                    if (baseAsset !== assetName && textures[baseAsset] === undefined) {
-                        textures[baseAsset] = "loading";
+                    if (baseAsset !== assetName && (textures[baseAsset] === undefined || (type === 'player' && forceReload))) {
                         const baseImg = new Image();
-                        baseImg.src = `/static/${baseAsset}.png`;
+                        const cacheBuster = (type === 'player') ? `?t=${cacheBusterTime}` : '';
+                        baseImg.src = `${path}${baseAsset}.png${cacheBuster}`;
                         baseImg.onload = () => { textures[baseAsset] = baseImg; };
-                        baseImg.onerror = () => { textures[baseAsset] = null; };
+                        baseImg.onerror = () => { 
+                            if (!textures[baseAsset] || textures[baseAsset] === "loading") {
+                                textures[baseAsset] = null; 
+                            }
+                        };
                     }
                 }
 
@@ -492,6 +465,8 @@ class ServerHTML:
                                 updatedIds.add(nEnt.id);
                                 let existing = currentEntities.find(e => e.id === nEnt.id);
                                 
+                                let needsSkinUpdate = false;
+
                                 if (existing) {
                                     existing.targetX = Number(nEnt.x);
                                     existing.targetY = Number(nEnt.y);
@@ -503,16 +478,25 @@ class ServerHTML:
                                     existing.sight = nEnt.sight;
                                     existing.type = nEnt.type;
                                     existing.name = nEnt.name;
+                                    existing.dir = nEnt.dir;
+                                    
+                                    if (existing.lastSkinUpdate !== nEnt.lastSkinUpdate) {
+                                        needsSkinUpdate = true;
+                                        existing.lastSkinUpdate = nEnt.lastSkinUpdate;
+                                    }
                                 } else {
                                     nEnt.targetX = Number(nEnt.x);
                                     nEnt.targetY = Number(nEnt.y);
                                     nEnt.x = nEnt.targetX; 
                                     nEnt.y = nEnt.targetY;
                                     nEnt.speed = Number(nEnt.speed) || 5.0;
+                                    nEnt.lastSkinUpdate = nEnt.lastSkinUpdate || 0;
+                                    
+                                    needsSkinUpdate = true;
                                     currentEntities.push(nEnt);
                                 }
                                 
-                                loadAndRegisterAsset(nEnt.asset);
+                                loadAndRegisterAsset(nEnt.asset, nEnt.type, needsSkinUpdate, nEnt.lastSkinUpdate);
                             });
 
                             currentEntities = currentEntities.filter(e => updatedIds.has(e.id));
@@ -627,7 +611,24 @@ class ServerHTML:
                     }
 
                     if (img && img !== "loading") {
-                        ctx.drawImage(img, posX, posY, drawSize, drawSize);
+                        if (ent.type === "player" && ent.dir) {
+                            ctx.save();
+                            
+                            ctx.translate(posX + drawSize / 2, posY + drawSize / 2);
+                            
+                            let angle = 0;
+                            if (ent.dir === 'east') angle = Math.PI / 2;
+                            else if (ent.dir === 'south') angle = Math.PI;
+                            else if (ent.dir === 'west') angle = 3 * Math.PI / 2;
+                            
+                            ctx.rotate(angle);
+                            
+                            ctx.drawImage(img, -drawSize / 2, -drawSize / 2, drawSize, drawSize);
+                            
+                            ctx.restore();
+                        } else {
+                            ctx.drawImage(img, posX, posY, drawSize, drawSize);
+                        }
                     } else {
                         ctx.beginPath();
                         ctx.arc(posX + drawSize / 2, posY + drawSize / 2, drawSize * 0.4, 0, 2 * Math.PI);
@@ -1026,7 +1027,10 @@ class ServerHTML:
         </body>
         </html>
         """
-        return render_template_string(htmlCode, blocksBackend=self.blockList, docContent=self.getDocumentationText())
+        return render_template_string(htmlCode, 
+                          blocksBackend=self.blockList, 
+                          docContent=self.getDocumentationText(),
+                          imagesFilePath=data.imagesFilePath)
     
     def startServer(self):
         self.app.run(host=self.host, port=self.port, debug=False, use_reloader=False)

@@ -1,5 +1,6 @@
 import random
 import data
+import inventory
 
 class Enemy:
     def __init__(self, pos, entity, id, game):
@@ -21,7 +22,7 @@ class Enemy:
     def updatePhysics(self, deltaTime, currentTime):
         if not self.isMoving:
             return
-        step = self.eDetails['speed'] * deltaTime
+        step = inventory.getSpeed(self) * deltaTime
 
         if self.x < self.moveTargetX:
             self.x = min(self.moveTargetX, self.x + step)
@@ -38,20 +39,20 @@ class Enemy:
             self.lastActionTime = currentTime
 
     def takeDamage(self, dmg):
-        self.eDetails['health'] -= dmg
-        if self.eDetails['health'] <= 0.0:
-            self.eDetails = self.game.getObjectInfo(self.eDetails['typeId'])
+        inventory.setHealth(self, inventory.getHealth(self) - dmg)
+        if inventory.getHealth(self) <= 0.0:
+            self.eDetails = self.game.getObjectInfo(inventory.getTypeId(self))
             newPos = self.game.getRandomPos(self.game.world[int(self.y)][int(self.x)]['zone'])
             self.game.updateEntityMovement((self.moveTargetX, self.moveTargetY), newPos, self.myId)
             self.isMoving = False
             self.x = newPos[0]
             self.y = newPos[1]
-            return self.eDetails['drops']
+            return inventory.getDrops(self)
         else:
             return None
 
     def move(self, currentTime):
-        if self.isMoving or currentTime - self.lastActionTime < self.eDetails['walkPause'] + self.startingPause:
+        if self.isMoving or currentTime - self.lastActionTime < inventory.getWalkPause(self) + self.startingPause:
             return
         if self.lastActionTime != 0:
             self.startingPause = 0.0
@@ -61,7 +62,7 @@ class Enemy:
             self.aggressive(currentTime)
 
     def canWalkOn(self, object):
-        if object['block']['typeId'] in self.eDetails['allowedBlocks'] and object['entities'] == {}:
+        if inventory.getBlockTypeId(object['block']) in inventory.getAllowedBlocks(self) and object['entities'] == {}:
             return True
         return False
 
@@ -90,7 +91,7 @@ class Enemy:
             self.executeStep(moveChoice)            
 
     def aggressive(self, currentTime):
-        sight = self.eDetails['sight']
+        sight = inventory.getSight(self)
         width = sight * 2 + 1
         mapData = self.game.getMapPart(int(self.x) - sight, int(self.y) - sight, width, width)
         
@@ -99,7 +100,7 @@ class Enemy:
         for rIdx, row in enumerate(mapData):
             for cIdx, cell in enumerate(row):
                 if 'entities' in cell:
-                    if cell['block']['typeId'] in self.eDetails['allowedBlocks']:
+                    if inventory.getBlockTypeId(cell['block']) in inventory.getAllowedBlocks(self):
                         for entId, entObj in cell['entities'].items():
                             if entObj.__class__.__name__ == "Player":
                                 targetX = int(self.x) - sight + cIdx
@@ -121,15 +122,15 @@ class Enemy:
             self.passive()
         
     def attack(self, currentTime):
-        if currentTime - self.lastAttackTime < self.eDetails['attackPause']:
+        if currentTime - self.lastAttackTime < inventory.getAttackPause(self):
             return
         self.lastAttackTime = currentTime
         for entity in list(self.game.world[int(self.y) + self.offsets[self.dir][1]][int(self.x) + self.offsets[self.dir][0]]['entities'].values()):
             if entity.__class__.__name__ == 'Player':
-                entity.takeDamage(self.eDetails['damage'])
+                entity.takeDamage(inventory.getDamage(self))
 
     def pathFind(self, mapPart, targetX, targetY):
-        sight = int(self.eDetails['sight'])
+        sight = int(inventory.getSight(self))
         width = len(mapPart)
         startC, startR = sight, sight
         targetC = int(targetX) - int(self.x) + sight
