@@ -71,7 +71,7 @@ class Client:
         self.__running = False
         self.__client.close()
 
-client = Client(("192.168.0.154", 5001))
+client = Client(("127.0.0.1", 5001))
 
 def forward():
     client.sendMessage("forward")

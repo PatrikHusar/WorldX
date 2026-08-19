@@ -14,16 +14,20 @@ while True:
     elif is_pressed(' '):
         attack()
     elif is_pressed('q'):
-        interact('put:')
+        interact('put:Sylvanite')
     elif is_pressed('z'):
         print(interact('show'))
     elif is_pressed('x'):
-        interact('take:')
+        interact('take:Sylvanite')
     elif is_pressed('c'):
-        interact('put:')
+        interact('put:recipe_light_boots_tier_1')
     elif is_pressed('r'):
-        interact('craft:')
+        interact('craft:light_boots_tier_1')
     elif is_pressed('f'):
-        equip('', '')
+        equip('light_boots_tier_1', 'feet')
     elif is_pressed('g'):
-        unequip('')
+        unequip('feet')
+    elif is_pressed('p'):
+        setSkin('CDdCvfC\nBBk')
+    elif is_pressed('o'):
+        setSkin('SLCfC\nBLkBa')

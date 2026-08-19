@@ -221,6 +221,10 @@ class Player:
         self.noMoveAction(currentTime)
         if not self.isMoving:
             self.moveAction(currentTime)
+    
+    def setSkinT(self, transparency):
+        self.lastSkinUpdate += 0.1
+        self.game.setSkinTransparency(self.name, transparency)
 
     def noMoveAction(self, currentTime):
         if self.noMoveActions:
@@ -250,12 +254,9 @@ class Player:
             elif act.startswith('turnTo:'):
                 self.turnTowards(act[6:])
             elif act.startswith('interact:'):
-                if act == 'interact:':
-                    self.interact()
-                else:
-                    self.interact(act[9:])
+                self.interact(act[9:])
                 self.game.savePlayer(self)
-            elif act.startswith('attack'):
+            elif act == 'attack':
                 self.attack(currentTime)
                 self.game.savePlayer(self)
 

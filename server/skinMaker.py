@@ -32,4 +32,18 @@ class SkinMaker:
                     pixels[x, y] = self.getCharColor(char)
 
         # resizes and saves image
-        img.resize(self.imgSize, Image.NEAREST).save(os.path.join(os.path.dirname(os.path.abspath(__file__)), self.outputFolder, f"{name}.png"), "PNG")
+        folderPath = os.path.join(os.path.dirname(os.path.abspath(__file__)), self.outputFolder)
+        os.makedirs(folderPath, exist_ok=True)
+        img.resize(self.imgSize, Image.NEAREST).save(os.path.join(folderPath, f"{name}.png"), "PNG")
+    
+    def changeImageTransparency(self, name, transparency):
+        folderPath = os.path.join(os.path.dirname(os.path.abspath(__file__)), self.outputFolder)
+        fileName = f"{name}.png"
+        imagePath = os.path.join(folderPath, fileName)
+        factor = max(0.0, min(float(transparency), 1.0))
+        with Image.open(imagePath) as img:
+            img = img.convert("RGBA")
+            alpha = img.getchannel('A').point(lambda p: int(p * factor))
+            img.putalpha(alpha)
+            outputPath = os.path.join(folderPath, fileName)
+            img.save(outputPath, "PNG")
