@@ -43,7 +43,7 @@ class SkinMaker:
         factor = max(0.0, min(float(transparency), 1.0))
         with Image.open(imagePath) as img:
             img = img.convert("RGBA")
-            alpha = img.getchannel('A').point(lambda p: int(p * factor))
+            alpha = img.getchannel('A').point(lambda p: int(255 * factor) if p > 0 else 0)
             img.putalpha(alpha)
             outputPath = os.path.join(folderPath, fileName)
             img.save(outputPath, "PNG")

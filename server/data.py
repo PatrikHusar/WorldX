@@ -61,7 +61,7 @@ objects = [
     {'type': 'enemy', 'typeId': 18, 'health': 80, 'damage': 40, 'speed': 0.9, 'behavior': 'aggressive', 'sight': 7, 'walkPause': 0.22, 'attackPause': 2.5, 'allowedBlocks': [17, 19], 'drops': [34]},
     {'type': 'enemy', 'typeId': 23, 'health': 65, 'damage': 30, 'speed': 0.9, 'behavior': 'aggressive', 'sight': 5, 'walkPause': 0.22, 'attackPause': 2.5, 'allowedBlocks': [6], 'drops': [32]},
     {'type': 'enemy', 'typeId': 24, 'health': 200, 'damage': 50, 'speed': 0.95, 'behavior': 'aggressive', 'sight': 9, 'walkPause': 0.2, 'attackPause': 2.2, 'allowedBlocks': [13, 3], 'drops': [36]},
-    {'type': 'player', 'typeId': 27, 'health': 100, 'damage': 15, 'speed': 1.0, 'sight': 5, 'walkPause': 0.2, 'attackPause': 1.5, 'regeneration': 1, 'allowedBlocks': [0, 6, 20, 17, 13, 1, 3, 9, 19, 22], 'swimmingSkill': 0, 'inventory': [], 'equipped': {'head': None, 'back': None, 'hand': None, 'feet': None}, 'chestInventory': [], 'inventorySpace': 10, 'researchProgress': {}, 'skinChangePause': 0.5},
+    {'type': 'player', 'typeId': 27, 'health': 100, 'damage': 15, 'speed': 1.0, 'sight': 5, 'walkPause': 0.2, 'attackPause': 1.5, 'regeneration': 1, 'allowedBlocks': [0, 6, 20, 17, 13, 1, 3, 9, 19, 22], 'swimmingSkill': 0, 'inventory': [], 'equipped': {'head': None, 'back': None, 'hand': None, 'feet': None}, 'chestInventory': [], 'inventorySpace': 10, 'researchProgress': {}, 'skinChangePause': 0.5, 'getTimeout': 0.5},
     {'type': 'grave', 'typeId': 25, 'inventory': []},
     {'type': 'chest', 'typeId': 30, 'drops': []}
 ]
@@ -78,7 +78,15 @@ items = [ # 'recipe': {id: amount}
     {'name': 'Borealite', 'recipe': {}, 'typeId': 37, 'boosts': {}, 'bodySlot': [], 'research': 0.0},
     {'name': 'Peltshard', 'recipe': {}, 'typeId': 38, 'boosts': {}, 'bodySlot': [], 'research': 0.0},
     {'name': 'recipe_light_boots_tier_1', 'recipe': {}, 'typeId': 39, 'boosts': {}, 'bodySlot': [], 'research': 0.0},
-    {'name': 'light_boots_tier_1', 'recipe': {29: 14, 28: 6}, 'typeId': 40, 'boosts': {'speed': 0.1}, 'bodySlot': ['feet'], 'research': 100.0}
+    {'name': 'light_boots_tier_1', 'recipe': {29: 14, 28: 6}, 'typeId': 40, 'boosts': {'speed': 0.1}, 'bodySlot': ['feet'], 'research': 100.0},
+    {'name': 'recipe_light_boots_tier_2', 'recipe': {}, 'typeId': 41, 'boosts': {}, 'bodySlot': [], 'research': 0.0},
+    {'name': 'light_boots_tier_2', 'recipe': {29: 14, 28: 6}, 'typeId': 42, 'boosts': {'speed': 0.2}, 'bodySlot': ['feet'], 'research': 130.0},
+    {'name': 'recipe_light_boots_tier_3', 'recipe': {}, 'typeId': 43, 'boosts': {}, 'bodySlot': [], 'research': 0.0},
+    {'name': 'light_boots_tier_3', 'recipe': {29: 14, 28: 6}, 'typeId': 44, 'boosts': {'speed': 0.3}, 'bodySlot': ['feet'], 'research': 160.0},
+    {'name': 'recipe_light_boots_tier_4', 'recipe': {}, 'typeId': 45, 'boosts': {}, 'bodySlot': [], 'research': 0.0},
+    {'name': 'light_boots_tier_4', 'recipe': {29: 14, 28: 6}, 'typeId': 46, 'boosts': {'speed': 0.4}, 'bodySlot': ['feet'], 'research': 190.0},
+    {'name': 'recipe_light_boots_tier_5', 'recipe': {}, 'typeId': 47, 'boosts': {}, 'bodySlot': [], 'research': 0.0},
+    {'name': 'light_boots_tier_5', 'recipe': {29: 14, 28: 6}, 'typeId': 48, 'boosts': {'speed': 0.5}, 'bodySlot': ['feet'], 'research': 220.0},
 ]
 
 entitySpawn = {

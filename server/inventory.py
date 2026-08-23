@@ -80,7 +80,7 @@ def getSwimmingSkill(player):
 def getSpeed(ent):
     return ent.eDetails.get('speed', 0)
 def getWalkPause(ent):
-    return ent.eDetails.get('walkPause', 0)
+    return ent.eDetails.get('walkPause', 1)
 def getSight(ent):
     return ent.eDetails.get('sight', 0)
 def getDir(ent):
@@ -92,4 +92,6 @@ def getName(ent):
 def getDrops(ent):
     return ent.eDetails.get('drops', None)
 def getSkinUpdatePause(ent):
-    return ent.eDetails.get('skinChangePause', 0)
+    return ent.eDetails.get('skinChangePause', 1)
+def getGetTimeout(player):
+    return player.eDetails.get('getTimeout', 1)

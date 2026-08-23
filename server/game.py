@@ -24,6 +24,10 @@ class Game:
         self.worldSaver = DataSaving(data.worldFilePath)
         self.skinMake = SkinMaker(data.imagesFilePath)
         world = self.worldSaver.loadData()
+        # for row in world:
+        #     for object in row:
+        #         if object['zone'] == None:
+        #             pass
         if world:
             self.world = world
             # self.delOldEntities()
@@ -65,7 +69,7 @@ class Game:
             self.skinMake.createSkin(player.name, '')
         self.entitiesPos[player.myId] = (int(player.x), int(player.y))
         self.world[int(player.y)][int(player.x)]['entities'][player.myId] = player
-        player.setSkinT('1.0')
+        player.setSkinT(0.3)
         self.savePlayer(player)
 
     def restorePlayers(self):
@@ -195,21 +199,18 @@ class Game:
             password = playerMessage[6:]
             if self.getPlayerByPassword(password) == None:
                 self.createPlayer(password)
-            else:
-                self.getPlayerByPassword(password).setSkinT('1.0')
+            self.getPlayerByPassword(password).setSkinT(1.0)
             self.adressToPassword[adress] = password
             return 'logged in to the server, have fun!'
         elif playerMessage == 'disconnect':
             if adress in self.adressToPassword:
                 player = self.getPlayerByPassword(self.adressToPassword[adress])
-                player.setSkinT('0.3')
+                player.setSkinT(0.3)
                 player.actions = []
                 del self.adressToPassword[adress]
         elif adress in self.adressToPassword:
-            if playerMessage == 'getPos':
-                return self.getPlayerByPassword(self.adressToPassword[adress]).getData(playerMessage)
-            elif playerMessage == 'interact:show':
-                return self.getPlayerByPassword(self.adressToPassword[adress]).getData(playerMessage)
+            if playerMessage == 'getPos' or playerMessage == 'getMap' or playerMessage == 'interact:show':
+                return self.getPlayerByPassword(self.adressToPassword[adress]).getData(playerMessage, time.perf_counter())
             elif playerMessage.startswith(tuple(['setSkin:', 'equip:', 'unequip:'])):
                 self.getPlayerByPassword(self.adressToPassword[adress]).noMoveActions.append(playerMessage)
             elif playerMessage.startswith(tuple(['forward', 'left', 'right', 'turnTo:', 'interact:', 'attack'])):
@@ -247,6 +248,21 @@ class Game:
         return None
     def setSkin(self, name, skin):
         self.skinMake.createSkin(name, skin)
+    def transformMapForPlayer(self, map):
+        newMap = []
+        for y in map:
+            xMap = []
+            for place in y:
+                newPlace = {}
+                newPlace['zone'] = place['zone']
+                newPlace['walkable'] = place['block']['walkable']
+                newPlace['swimmable'] = place['block']['swimmable']
+                newPlace['entities'] = []
+                for e in place['entities'].values():
+                    newPlace['entities'].append(e.__class__.__name__.lower())
+                xMap.append(newPlace)
+            newMap.append(xMap)
+        return newMap
 
 if __name__ == "__main__":
     game = Game()

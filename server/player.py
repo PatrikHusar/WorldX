@@ -18,6 +18,7 @@ class Player:
         self.lastActionTime = 0
         self.lastAttackTime = 0
         self.lastSkinUpdate = 0
+        self.lastGetTime = 0
         self.actions = []
         self.noMoveActions = []
 
@@ -143,11 +144,16 @@ class Player:
             return recipes
         elif getBlockTypeId(block) == 10:
             return getChestInventory(self)
-    def getData(self, message):
-        if message == 'getPos':
-            return (self.x, self.y)
-        elif message == 'interact:show':
-            return self.showInteract()
+    def getData(self, message, currentTime):
+        if currentTime - self.lastGetTime > getGetTimeout(self):
+            self.lastGetTime = currentTime
+            if message == 'getPos':
+                return (self.x, self.y)
+            elif message == 'interact:show':
+                return self.showInteract()
+            elif message == 'getMap':
+                map = self.game.getMapPart(int(self.x) - getSight(self), int(self.y) - getSight(self), getSight(self) * 2 + 1, getSight(self) * 2 + 1)
+                return self.game.transformMapForPlayer(map)
 
     def loadInventoryWithItems(self, ids, haveInvLimits=True):
         for id in ids:
@@ -223,8 +229,8 @@ class Player:
             self.moveAction(currentTime)
     
     def setSkinT(self, transparency):
-        self.lastSkinUpdate += 0.1
         self.game.setSkinTransparency(self.name, transparency)
+        self.lastSkinUpdate += 5
 
     def noMoveAction(self, currentTime):
         if self.noMoveActions:
@@ -259,5 +265,4 @@ class Player:
             elif act == 'attack':
                 self.attack(currentTime)
                 self.game.savePlayer(self)
-
             self.lastActionTime = currentTime
