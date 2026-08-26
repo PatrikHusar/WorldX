@@ -15,7 +15,7 @@ from skinMaker import SkinMaker
 import inventory
 
 class Game:
-    def __init__(self):
+    def __init__(self, port):
         self.world = []
         self.zonePositions = {}
         self.entitiesPos = {}
@@ -37,7 +37,7 @@ class Game:
         self.playerSaver = DataSaving(data.playersDataFilePath)
         self.restorePlayers()
         self.TCPserver = Server(("0.0.0.0", 5001), self.processClientData)
-        self.webServer = ServerHTML(host="0.0.0.0", port=5000, game=self)
+        self.webServer = ServerHTML(host="0.0.0.0", port=port, game=self)
         self.initZonePositions()
         self.spawnEnemies()
         self.spawnChests()
@@ -263,6 +263,3 @@ class Game:
                 xMap.append(newPlace)
             newMap.append(xMap)
         return newMap
-
-if __name__ == "__main__":
-    game = Game()

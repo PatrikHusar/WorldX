@@ -57,7 +57,7 @@ class Client:
     def sendMessage(self, message, printResponse=False):
         try:
             self.__client.sendall(message.encode("utf-8"))
-            response = json.loads(self.__client.recv(1024).decode("utf-8"))
+            response = json.loads(self.__client.recv(16384).decode("utf-8"))
             if response and printResponse:
                 print(response)
             return response
@@ -109,3 +109,6 @@ def unequip(slot):
 
 def setSkin(asciiSkin):
     client.sendMessage(f'setSkin:{asciiSkin}')
+
+def getMap():
+    return client.sendMessage('getMap')

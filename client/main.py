@@ -1,6 +1,6 @@
-from client import is_pressed, turn_right, turn_left, forward, turn_towards, get_position, interact, attack, equip, unequip, setSkin
+from client import is_pressed, turn_right, turn_left, forward, turn_towards, get_position, interact, attack, equip, unequip, setSkin, getMap
 
-setSkin('CCCfC\nBBkBB\n.L TS')
+# setSkin('CCCfC\nBBkBB\n.L TS')
 
 while True:
     if is_pressed('w'):
@@ -31,3 +31,5 @@ while True:
         setSkin('CDdCvfC\nBBk')
     elif is_pressed('o'):
         setSkin('SLCfC\nBLkBa')
+    elif is_pressed('m'):
+        print(getMap())
