@@ -63,8 +63,8 @@ def getTypeId(ent):
     return ent.eDetails.get('typeId', 0)
 def getDamage(ent):
     return ent.eDetails.get('damage')
-def getAttackPause(ent):
-    return ent.eDetails.get('attackPause')
+def getInteractionPause(ent):
+    return ent.eDetails.get('interactPause')
 def getBlockTypeId(block):
     return block.get('typeId')
 def getChestInventory(player):
@@ -93,5 +93,5 @@ def getDrops(ent):
     return ent.eDetails.get('drops', None)
 def getSkinUpdatePause(ent):
     return ent.eDetails.get('skinChangePause', 1)
-def getGetTimeout(player):
-    return player.eDetails.get('getTimeout', 1)
+def getGetDataTimeout(player):
+    return player.eDetails.get('getDataTimeout', 1)

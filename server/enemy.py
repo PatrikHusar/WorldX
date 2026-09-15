@@ -122,7 +122,7 @@ class Enemy:
             self.passive()
         
     def attack(self, currentTime):
-        if currentTime - self.lastAttackTime < inventory.getAttackPause(self):
+        if currentTime - self.lastAttackTime < inventory.getInteractionPause(self):
             return
         self.lastAttackTime = currentTime
         for entity in list(self.game.world[int(self.y) + self.offsets[self.dir][1]][int(self.x) + self.offsets[self.dir][0]]['entities'].values()):

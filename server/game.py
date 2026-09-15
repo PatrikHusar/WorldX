@@ -211,9 +211,7 @@ class Game:
         elif adress in self.adressToPassword:
             if playerMessage == 'getPos' or playerMessage == 'getMap' or playerMessage == 'interact:show':
                 return self.getPlayerByPassword(self.adressToPassword[adress]).getData(playerMessage, time.perf_counter())
-            elif playerMessage.startswith(tuple(['setSkin:', 'equip:', 'unequip:'])):
-                self.getPlayerByPassword(self.adressToPassword[adress]).noMoveActions.append(playerMessage)
-            elif playerMessage.startswith(tuple(['forward', 'left', 'right', 'turnTo:', 'interact:', 'attack'])):
+            elif playerMessage.startswith(tuple(['forward', 'left', 'right', 'turnTo:', 'interact:', 'attack', 'setSkin:', 'equip:', 'unequip:'])):
                 self.getPlayerByPassword(self.adressToPassword[adress]).actions.append(playerMessage)
         return None
 #     def changeBlock(self, x, y, newId):
@@ -248,7 +246,7 @@ class Game:
         return None
     def setSkin(self, name, skin):
         self.skinMake.createSkin(name, skin)
-    def transformMapForPlayer(self, map):
+    def transformMapForClient(self, map):
         newMap = []
         for y in map:
             xMap = []

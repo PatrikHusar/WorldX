@@ -15,12 +15,11 @@ class Player:
         self.offsets = {'north': (0, -1), 'east': (1, 0), 'south': (0, 1), 'west': (-1, 0)}
         self.moveTargetX = float(self.x)
         self.moveTargetY = float(self.y)
-        self.lastActionTime = 0
-        self.lastAttackTime = 0
+        self.lastMoveTime = 0
+        self.lastInteractionTime = 0
         self.lastSkinUpdate = 0
-        self.lastGetTime = 0
+        self.lastGetDataTime = 0
         self.actions = []
-        self.noMoveActions = []
 
     def equipItem(self, action, restoring=False):
         item = action[:action.find('|')]
@@ -87,10 +86,7 @@ class Player:
             self.x = newPos[0]
             self.y = newPos[1]
 
-    def attack(self, currentTime):
-        if currentTime - self.lastAttackTime < getAttackPause(self):
-            return
-        self.lastAttackTime = currentTime
+    def attack(self):
         entities = list(self.game.world[int(self.y) + self.offsets[self.dir][1]][int(self.x) + self.offsets[self.dir][0]]['entities'].values())
         if entities:
             for entity in entities:
@@ -145,15 +141,15 @@ class Player:
         elif getBlockTypeId(block) == 10:
             return getChestInventory(self)
     def getData(self, message, currentTime):
-        if currentTime - self.lastGetTime > getGetTimeout(self):
-            self.lastGetTime = currentTime
+        if currentTime - self.lastGetDataTime > getGetDataTimeout(self):
+            self.lastGetDataTime = currentTime
             if message == 'getPos':
                 return (self.x, self.y)
             elif message == 'interact:show':
                 return self.showInteract()
             elif message == 'getMap':
                 map = self.game.getMapPart(int(self.x) - getSight(self), int(self.y) - getSight(self), getSight(self) * 2 + 1, getSight(self) * 2 + 1)
-                return self.game.transformMapForPlayer(map)
+                return self.game.transformMapForClient(map)
 
     def loadInventoryWithItems(self, ids, haveInvLimits=True):
         for id in ids:
@@ -163,9 +159,6 @@ class Player:
 
     def restorePlayer(self, restore):
         restorePlayerData(self, restore)
-        
-    def turnTowards(self, dir):
-        self.dir = dir
 
     def canWalkOn(self, object):
         noEntities = True
@@ -180,6 +173,9 @@ class Player:
             else:
                 return True
         return False
+
+    def turnTowards(self, dir):
+        self.dir = dir
 
     def forward(self):        
         targetTileX = int(self.x + self.offsets[self.dir][0])
@@ -210,7 +206,7 @@ class Player:
 
         if self.x == self.moveTargetX and self.y == self.moveTargetY:
             self.isMoving = False
-            self.lastActionTime = currentTime
+            self.lastMoveTime = currentTime
 
     def executeStep(self):
         oldX, oldY = int(self.x), int(self.y)
@@ -222,47 +218,45 @@ class Player:
         self.game.updateEntityMovement((oldX, oldY), (newX, newY), self.myId)
 
     def doAction(self, currentTime):
-        if currentTime - self.lastActionTime < getWalkPause(self):
+        if self.isMoving:
             return
-        self.noMoveAction(currentTime)
-        if not self.isMoving:
-            self.moveAction(currentTime)
-    
+        if self.actions:
+            act = self.actions.pop(0)
+            if currentTime - self.lastMoveTime > getWalkPause(self):
+                if act == 'forward':
+                    self.forward()
+                    self.lastMoveTime = currentTime
+                elif act == 'left':
+                    self.turnLeft()
+                    self.lastMoveTime = currentTime
+                elif act == 'right':
+                    self.turnRight()
+                    self.lastMoveTime = currentTime
+                elif act.startswith('turnTo:'):
+                    self.turnTowards(act[6:])
+                    self.lastMoveTime = currentTime
+                elif act.startswith('equip:'):
+                    self.equipItem(act[6:])
+                    self.lastMoveTime = currentTime
+                    self.game.savePlayer(self)
+                elif act.startswith('unequip:'):
+                    self.unequipItem(act[8:])
+                    self.lastMoveTime = currentTime
+                    self.game.savePlayer(self)
+            elif currentTime - self.lastInteractionTime > getInteractionPause(self):
+                if act.startswith('interact:'):
+                    self.interact(act[9:])
+                    self.lastInteractionTime = currentTime
+                    self.game.savePlayer(self)
+                elif act == 'attack':
+                    self.attack(currentTime)
+                    self.lastInteractionTime = currentTime
+                    self.game.savePlayer(self)
+            elif currentTime - self.lastSkinUpdate > getSkinUpdatePause(self):
+                if act.startswith('setSkin:'):
+                    self.lastSkinUpdate = currentTime
+                    self.game.setSkin(self.name, act[8:])
+
     def setSkinT(self, transparency):
         self.game.setSkinTransparency(self.name, transparency)
         self.lastSkinUpdate += 5
-
-    def noMoveAction(self, currentTime):
-        if self.noMoveActions:
-            act = self.noMoveActions.pop(0)
-            if act.startswith('setSkin:'):
-                if currentTime - self.lastSkinUpdate > getSkinUpdatePause(self):
-                    self.lastSkinUpdate = currentTime
-                    self.game.setSkin(self.name, act[8:])
-            elif act.startswith('equip:'):
-                self.equipItem(act[6:])
-                self.game.savePlayer(self)
-                self.lastActionTime = currentTime
-            elif act.startswith('unequip:'):
-                self.unequipItem(act[8:])
-                self.game.savePlayer(self)
-                self.lastActionTime = currentTime
-
-    def moveAction(self, currentTime):
-        if self.actions:
-            act = self.actions.pop(0)
-            if act == 'forward':
-                self.forward()
-            elif act == 'left':
-                self.turnLeft()
-            elif act == 'right':
-                self.turnRight()
-            elif act.startswith('turnTo:'):
-                self.turnTowards(act[6:])
-            elif act.startswith('interact:'):
-                self.interact(act[9:])
-                self.game.savePlayer(self)
-            elif act == 'attack':
-                self.attack(currentTime)
-                self.game.savePlayer(self)
-            self.lastActionTime = currentTime
