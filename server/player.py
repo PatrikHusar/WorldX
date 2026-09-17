@@ -17,6 +17,7 @@ class Player:
         self.moveTargetY = float(self.y)
         self.lastMoveTime = 0
         self.lastInteractionTime = 0
+        self.lastAttackTime = 0
         self.lastSkinUpdate = 0
         self.lastGetDataTime = 0
         self.actions = []
@@ -243,16 +244,17 @@ class Player:
                     self.unequipItem(act[8:])
                     self.lastMoveTime = currentTime
                     self.game.savePlayer(self)
-            elif currentTime - self.lastInteractionTime > getInteractionPause(self):
+            if currentTime - self.lastInteractionTime > getInteractionPause(self):
                 if act.startswith('interact:'):
                     self.interact(act[9:])
                     self.lastInteractionTime = currentTime
                     self.game.savePlayer(self)
-                elif act == 'attack':
-                    self.attack(currentTime)
-                    self.lastInteractionTime = currentTime
+            if currentTime - self.lastAttackTime > getAttackPause(self):
+                if act == 'attack':
+                    self.attack()
+                    self.lastAttackTime = currentTime
                     self.game.savePlayer(self)
-            elif currentTime - self.lastSkinUpdate > getSkinUpdatePause(self):
+            if currentTime - self.lastSkinUpdate > getSkinUpdatePause(self):
                 if act.startswith('setSkin:'):
                     self.lastSkinUpdate = currentTime
                     self.game.setSkin(self.name, act[8:])

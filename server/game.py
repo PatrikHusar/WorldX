@@ -48,7 +48,7 @@ class Game:
         for zone in data.entitySpawn.keys():
             for i in range(data.maxChestInZone[zone]):
                 self.entitiesPos[self.idCounter] = self.getRandomPos(zone)
-                details = self.getObjectInfo(30)
+                details = self.getObjectInfo(28)
                 details['drops'].append(random.choice(data.chestDrops[zone]))
                 chest = Chest(self.entitiesPos[self.idCounter], details, self.idCounter, self)
                 self.world[chest.y][chest.x]['entities'][self.idCounter] = chest

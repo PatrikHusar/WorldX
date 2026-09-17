@@ -65,6 +65,8 @@ def getDamage(ent):
     return ent.eDetails.get('damage')
 def getInteractionPause(ent):
     return ent.eDetails.get('interactPause')
+def getAttackPause(ent):
+    return ent.eDetails.get('attackPause')
 def getBlockTypeId(block):
     return block.get('typeId')
 def getChestInventory(player):
