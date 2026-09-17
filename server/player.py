@@ -21,6 +21,34 @@ class Player:
         self.lastSkinUpdate = 0
         self.lastGetDataTime = 0
         self.actions = []
+        self.actionRules = [
+            {
+                'timeAttr': 'lastMoveTime',
+                'pauseFn': getWalkPause,
+                'actions': [
+                    ('forward', lambda _: self.forward(), False),
+                    ('left', lambda _: self.turnLeft(), False),
+                    ('right', lambda _: self.turnRight(), False),
+                    ('turnTo:', lambda arg: self.turnTowards(arg), False),
+                    ('equip:', lambda arg: self.equipItem(arg), True),
+                    ('unequip:', lambda arg: self.unequipItem(arg), True),]
+            },{
+                'timeAttr': 'lastInteractionTime',
+                'pauseFn': getInteractionPause,
+                'actions': [
+                    ('interact:', lambda arg: self.interact(arg), True),]
+            },{
+                'timeAttr': 'lastAttackTime',
+                'pauseFn': getAttackPause,
+                'actions': [
+                    ('attack', lambda _: self.attack(), True),]
+            },{
+                'timeAttr': 'lastSkinUpdate',
+                'pauseFn': getSkinUpdatePause,
+                'actions': [
+                    ('setSkin:', lambda arg: self.game.setSkin(self.name, arg), False),
+                    ('setSkinT:', lambda arg: self.setSkinT(arg), False),]
+            }]
 
     def equipItem(self, action, restoring=False):
         item = action[:action.find('|')]
@@ -80,6 +108,7 @@ class Player:
                     if item:
                         items.append(item)
                 self.game.createGrave(items, (self.moveTargetX, self.moveTargetY))
+                self.actions = []
             self.eDetails = self.game.getObjectInfo(getTypeId(self))
             newPos = data.spawnPos
             self.game.updateEntityMovement((self.moveTargetX, self.moveTargetY), newPos, self.myId)
@@ -91,7 +120,7 @@ class Player:
         entities = list(self.game.world[int(self.y) + self.offsets[self.dir][1]][int(self.x) + self.offsets[self.dir][0]]['entities'].values())
         if entities:
             for entity in entities:
-                if not entity.__class__.__name__ == 'Chest':
+                if not entity.__class__.__name__ in ['Chest', 'Grave']:
                     if entity.__class__.__name__ == 'Enemy' or not self.game.world[int(self.y)][int(self.x)]['zone'] in data.noPVPzones:
                         itemIds = entity.takeDamage(getDamage(self))
                         if itemIds:
@@ -219,45 +248,21 @@ class Player:
         self.game.updateEntityMovement((oldX, oldY), (newX, newY), self.myId)
 
     def doAction(self, currentTime):
-        if self.isMoving:
+        if self.isMoving or not self.actions:
             return
-        if self.actions:
-            act = self.actions.pop(0)
-            if currentTime - self.lastMoveTime > getWalkPause(self):
-                if act == 'forward':
-                    self.forward()
-                    self.lastMoveTime = currentTime
-                elif act == 'left':
-                    self.turnLeft()
-                    self.lastMoveTime = currentTime
-                elif act == 'right':
-                    self.turnRight()
-                    self.lastMoveTime = currentTime
-                elif act.startswith('turnTo:'):
-                    self.turnTowards(act[6:])
-                    self.lastMoveTime = currentTime
-                elif act.startswith('equip:'):
-                    self.equipItem(act[6:])
-                    self.lastMoveTime = currentTime
-                    self.game.savePlayer(self)
-                elif act.startswith('unequip:'):
-                    self.unequipItem(act[8:])
-                    self.lastMoveTime = currentTime
-                    self.game.savePlayer(self)
-            if currentTime - self.lastInteractionTime > getInteractionPause(self):
-                if act.startswith('interact:'):
-                    self.interact(act[9:])
-                    self.lastInteractionTime = currentTime
-                    self.game.savePlayer(self)
-            if currentTime - self.lastAttackTime > getAttackPause(self):
-                if act == 'attack':
-                    self.attack()
-                    self.lastAttackTime = currentTime
-                    self.game.savePlayer(self)
-            if currentTime - self.lastSkinUpdate > getSkinUpdatePause(self):
-                if act.startswith('setSkin:'):
-                    self.lastSkinUpdate = currentTime
-                    self.game.setSkin(self.name, act[8:])
+        act = self.actions[0]
+        for category in self.actionRules:
+            attrName = category['timeAttr']
+            if currentTime - getattr(self, attrName) > category['pauseFn'](self):
+                for action, handler, shouldSave in category['actions']:
+                    if act.startswith(action):
+                        arg = act[len(action):]
+                        handler(arg)
+                        setattr(self, attrName, currentTime)
+                        self.actions.pop(0)
+                        if shouldSave:
+                            self.game.savePlayer(self)
+                        return
 
     def setSkinT(self, transparency):
         self.game.setSkinTransparency(self.name, transparency)

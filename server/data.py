@@ -15,7 +15,7 @@ maxEnemiesInZone = {
     'desert': 25,
     'tundra': 20,
     'swamp': 30,
-    'volcano': 20
+    'volcano': 40
 }
 
 maxChestInZone = {
@@ -60,7 +60,7 @@ objects = [
     {'type': 'enemy', 'typeId': 5, 'health': 60, 'damage': 20, 'speed': 0.9, 'behavior': 'aggressive', 'sight': 5, 'walkPause': 0.22, 'attackPause': 2.5, 'allowedBlocks': [20, 22], 'drops': [38]},
     {'type': 'enemy', 'typeId': 18, 'health': 80, 'damage': 40, 'speed': 0.9, 'behavior': 'aggressive', 'sight': 7, 'walkPause': 0.22, 'attackPause': 2.5, 'allowedBlocks': [17, 19], 'drops': [34]},
     {'type': 'enemy', 'typeId': 23, 'health': 65, 'damage': 30, 'speed': 0.9, 'behavior': 'aggressive', 'sight': 5, 'walkPause': 0.22, 'attackPause': 2.5, 'allowedBlocks': [6], 'drops': [32]},
-    {'type': 'enemy', 'typeId': 24, 'health': 200, 'damage': 50, 'speed': 0.98, 'behavior': 'aggressive', 'sight': 9, 'walkPause': 0.2, 'attackPause': 2.2, 'allowedBlocks': [13, 3], 'drops': [36]},
+    {'type': 'enemy', 'typeId': 24, 'health': 200, 'damage': 60, 'speed': 0.98, 'behavior': 'aggressive', 'sight': 9, 'walkPause': 0.2, 'attackPause': 2.2, 'allowedBlocks': [13, 3], 'drops': [36]},
     {'type': 'player', 'typeId': 27, 'health': 100, 'damage': 15, 'speed': 1.0, 'sight': 5, 'walkPause': 0.2, 'interactPause': 0.5, 'attackPause': 1.5, 'regeneration': 1, 'allowedBlocks': [0, 6, 20, 17, 13, 1, 3, 9, 19, 22], 'swimmingSkill': 0, 'inventory': [], 'equipped': {'head': None, 'back': None, 'hand': None, 'feet': None}, 'chestInventory': [], 'inventorySpace': 10, 'researchProgress': {}, 'skinChangePause': 0.5, 'getDataTimeout': 0.5, 'reach': 1},
     {'type': 'grave', 'typeId': 25, 'inventory': []},
     {'type': 'chest', 'typeId': 28, 'drops': []}

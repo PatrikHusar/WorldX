@@ -1,7 +1,10 @@
 def addItemToInventory(player, item, ignoreSpace=False):
-    if player.eDetails['inventorySpace'] > 0 or ignoreSpace:
+    if not 'inventorySpace' in player.eDetails:
+        player.eDetails['inventory'].append(item)
+    elif player.eDetails['inventorySpace'] > 0 or ignoreSpace:
         player.eDetails['inventory'].append(item)
         player.eDetails['inventorySpace'] -= 1
+
 def delItemFromInventory(player, item):
     try:
         player.eDetails['inventory'].remove(item)
