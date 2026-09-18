@@ -107,8 +107,11 @@ def equip(item, slot):
 def unequip(slot):
     client.sendMessage(f'unequip:{slot}')
 
-def setSkin(asciiSkin):
+def set_skin(asciiSkin):
     client.sendMessage(f'setSkin:{asciiSkin}')
 
-def getMap():
+def get_map():
     return client.sendMessage('getMap')
+
+def stop_actions():
+    client.sendMessage('resetActions')

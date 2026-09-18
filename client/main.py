@@ -1,6 +1,6 @@
-from client import is_pressed, turn_right, turn_left, forward, turn_towards, get_position, interact, attack, equip, unequip, setSkin, getMap
+from client import is_pressed, turn_right, turn_left, forward, turn_towards, get_position, interact, attack, equip, unequip, set_skin, get_map, stop_actions
 
-# setSkin('CCCfC\nBBkBB\n.L TS')
+set_skin('CCCfC\nBBkBB\n.L TS')
 
 while True:
     if is_pressed('w'):
@@ -28,8 +28,10 @@ while True:
     elif is_pressed('g'):
         unequip('feet')
     elif is_pressed('p'):
-        setSkin('CDdCvfC\nBBk')
+        set_skin('CDdCvfC\nBBk')
     elif is_pressed('o'):
-        setSkin('SLCfC\nBLkBa')
+        set_skin('SLCfC\nBLkBa')
     elif is_pressed('m'):
-        print(getMap())
+        print(get_map())
+    elif is_pressed('s'):
+        stop_actions()
