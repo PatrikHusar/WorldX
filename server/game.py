@@ -257,7 +257,13 @@ class Game:
                 newPlace['swimmable'] = place['block']['swimmable']
                 newPlace['entities'] = []
                 for e in place['entities'].values():
-                    newPlace['entities'].append(e.__class__.__name__.lower())
+                    eInfo = {}
+                    eInfo['name'] = e.__class__.__name__.lower() + ":" + inventory.getName(e) if inventory.getName(e) != None else e.__class__.__name__.lower()
+                    eInfo['dir'] = inventory.getDir(e)
+                    eInfo['health'] = inventory.getHealth(e)
+                    eInfo['damage'] = inventory.getDamage(e)
+                    eInfo['speed'] = inventory.getSpeed(e)
+                    newPlace['entities'].append(eInfo)
                 xMap.append(newPlace)
             newMap.append(xMap)
         return newMap
