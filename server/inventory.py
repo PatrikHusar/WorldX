@@ -100,3 +100,5 @@ def getSkinUpdatePause(ent):
     return ent.eDetails.get('skinChangePause', 1)
 def getGetDataTimeout(player):
     return player.eDetails.get('getDataTimeout', 1)
+def getReach(player):
+    return player.eDetails.get('reach', 1)

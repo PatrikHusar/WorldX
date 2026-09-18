@@ -46,8 +46,7 @@ class Player:
                 'timeAttr': 'lastSkinUpdate',
                 'pauseFn': getSkinUpdatePause,
                 'actions': [
-                    ('setSkin:', lambda arg: self.game.setSkin(self.name, arg), False),
-                    ('setSkinT:', lambda arg: self.setSkinT(arg), False),]
+                    ('setSkin:', lambda arg: self.game.setSkin(self.name, arg), False)]
             }]
 
     def equipItem(self, action, restoring=False):
@@ -117,59 +116,68 @@ class Player:
             self.y = newPos[1]
 
     def attack(self):
-        entities = list(self.game.world[int(self.y) + self.offsets[self.dir][1]][int(self.x) + self.offsets[self.dir][0]]['entities'].values())
-        if entities:
-            for entity in entities:
-                if not entity.__class__.__name__ in ['Chest', 'Grave']:
-                    if entity.__class__.__name__ == 'Enemy' or not self.game.world[int(self.y)][int(self.x)]['zone'] in data.noPVPzones:
-                        itemIds = entity.takeDamage(getDamage(self))
-                        if itemIds:
-                            for id in itemIds:
-                                addItemToInventory(self, self.game.getValue('name', ['typeId', id]))
+        for i in range(getReach(self)):
+            entities = list(self.game.world[int(self.y) + self.offsets[self.dir][1] * (i + 1)][int(self.x) + self.offsets[self.dir][0] * (i + 1)]['entities'].values())
+            if entities:
+                for entity in entities:
+                    if not entity.__class__.__name__ in ['Chest', 'Grave']:
+                        if entity.__class__.__name__ == 'Enemy' or not self.game.world[int(self.y)][int(self.x)]['zone'] in data.noPVPzones:
+                            itemIds = entity.takeDamage(getDamage(self))
+                            if itemIds:
+                                for id in itemIds:
+                                    addItemToInventory(self, self.game.getValue('name', ['typeId', id]))
 
     def interact(self, action):
-        block = self.game.world[int(self.y) + self.offsets[self.dir][1]][int(self.x) + self.offsets[self.dir][0]]['block']
-        if getBlockTypeId(block) == 10:
-            if action.startswith('put:'):
-                self.storeItem(action[4:])
-            elif action.startswith('take:'):
-                self.takeItem(action[5:])
-        elif getBlockTypeId(block) == 12:
-            if action.startswith('put:'):
-                self.addResearchPoints(action[4:])
-        elif getBlockTypeId(block) == 11:
-            if action.startswith('craft:'):
-                self.craft(action[6:])
+        for i in range(getReach(self)):
+            block = self.game.world[int(self.y) + self.offsets[self.dir][1] * (i + 1)][int(self.x) + self.offsets[self.dir][0] * (i + 1)]['block']
+            if getBlockTypeId(block) == 10:
+                if action.startswith('put:'):
+                    self.storeItem(action[4:])
+                elif action.startswith('take:'):
+                    self.takeItem(action[5:])
+                return
+            elif getBlockTypeId(block) == 12:
+                if action.startswith('put:'):
+                    self.addResearchPoints(action[4:])
+                return
+            elif getBlockTypeId(block) == 11:
+                if action.startswith('craft:'):
+                    self.craft(action[6:])
+                return
         if action == 'open':
-            for entity in list(self.game.world[int(self.y) + self.offsets[self.dir][1]][int(self.x) + self.offsets[self.dir][0]]['entities'].values()):
-                if entity.__class__.__name__ == 'Chest':
-                    self.loadInventoryWithItems(entity.openChest())
-                elif entity.__class__.__name__ == 'Grave':
-                    for item in self.game.claimGrave(entity.myId):
-                        addItemToInventory(self, item, ignoreSpace=True)
-
+            for i in range(getReach(self)):
+                entities = self.game.world[int(self.y) + self.offsets[self.dir][1] * (i + 1)][int(self.x) + self.offsets[self.dir][0] * (i + 1)]['entities'].values()
+                for entity in list(entities):
+                    if entity.__class__.__name__ == 'Chest':
+                        self.loadInventoryWithItems(entity.openChest())
+                        return
+                    elif entity.__class__.__name__ == 'Grave':
+                        for item in self.game.claimGrave(entity.myId):
+                            addItemToInventory(self, item, ignoreSpace=True)
+                        return
     def showInteract(self):
-        block = self.game.world[int(self.moveTargetY) + self.offsets[self.dir][1]][int(self.moveTargetX) + self.offsets[self.dir][0]]['block']
-        if getBlockTypeId(block) == 12:
-            recipeDict = {}
-            for item in getResearchProgress(self):
-                if self.game.getValue('research', ['name', item]) != 0:
-                    recipeDict[item] = getResearchProgress(self)[item] / self.game.getValue('research', ['name', item])
-                else:
-                    recipeDict[item] = 1.0
-            return recipeDict
-        elif getBlockTypeId(block) == 11:
-            recipes = []
-            for r in getResearchProgress(self):
-                if self.game.getValue('research', ['name', r]) == getResearchProgress(self)[r] or self.game.getValue('research', ['name', r]) == 0:
-                    recipe = self.game.getValue('recipe', ['name', r])
-                    changedRecipe = {}
-                    for id in recipe:
-                        changedRecipe[self.game.getValue('name', ['typeId', id])] = recipe[id]
-                    recipes.append({r: changedRecipe})
-            return recipes
-        elif getBlockTypeId(block) == 10:
-            return getChestInventory(self)
+        for i in range(getReach(self)):
+            block = self.game.world[int(self.y) + self.offsets[self.dir][1] * (i + 1)][int(self.x) + self.offsets[self.dir][0] * (i + 1)]['block']
+            if getBlockTypeId(block) == 12:
+                recipeDict = {}
+                for item in getResearchProgress(self):
+                    if self.game.getValue('research', ['name', item]) != 0:
+                        recipeDict[item] = getResearchProgress(self)[item] / self.game.getValue('research', ['name', item])
+                    else:
+                        recipeDict[item] = 1.0
+                return recipeDict
+            elif getBlockTypeId(block) == 11:
+                recipes = []
+                for r in getResearchProgress(self):
+                    if self.game.getValue('research', ['name', r]) == getResearchProgress(self)[r] or self.game.getValue('research', ['name', r]) == 0:
+                        recipe = self.game.getValue('recipe', ['name', r])
+                        changedRecipe = {}
+                        for id in recipe:
+                            changedRecipe[self.game.getValue('name', ['typeId', id])] = recipe[id]
+                        recipes.append({r: changedRecipe})
+                return recipes
+            elif getBlockTypeId(block) == 10:
+                return getChestInventory(self)
     def getData(self, message, currentTime):
         if currentTime - self.lastGetDataTime > getGetDataTimeout(self):
             self.lastGetDataTime = currentTime
@@ -180,6 +188,8 @@ class Player:
             elif message == 'getMap':
                 map = self.game.getMapPart(int(self.x) - getSight(self), int(self.y) - getSight(self), getSight(self) * 2 + 1, getSight(self) * 2 + 1)
                 return self.game.transformMapForClient(map)
+            elif message == 'resetActions':
+                self.actions = []
 
     def loadInventoryWithItems(self, ids, haveInvLimits=True):
         for id in ids:
