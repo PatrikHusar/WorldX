@@ -14,15 +14,15 @@ while True:
     elif is_pressed(' '):
         attack()
     elif is_pressed('q'):
-        interact('put:')
+        interact('put', '')
     elif is_pressed('z'):
         print(interact('show'))
     elif is_pressed('x'):
-        interact('take:')
+        interact('take', '')
     elif is_pressed('c'):
-        interact('put:')
+        interact('put', '')
     elif is_pressed('r'):
-        interact('craft:')
+        interact('craft', '')
     elif is_pressed('f'):
         equip('', '')
     elif is_pressed('g'):

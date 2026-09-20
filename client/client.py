@@ -95,8 +95,11 @@ def is_pressed(klaves):
         return True
     return False
 
-def interact(action):
-    return client.sendMessage(f'interact:{action}')
+def interact(action, item=None):
+    if item == None:
+        return client.sendMessage(f'interact:{action}')
+    else:
+        return client.sendMessage(f'interact:{action}:{item}')
 
 def attack():
     client.sendMessage('attack')
