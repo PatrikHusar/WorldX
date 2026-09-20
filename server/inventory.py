@@ -1,7 +1,10 @@
 def addItemToInventory(player, item, ignoreSpace=False):
-    if player.eDetails['inventorySpace'] > 0 or ignoreSpace:
+    if not 'inventorySpace' in player.eDetails:
+        player.eDetails['inventory'].append(item)
+    elif player.eDetails['inventorySpace'] > 0 or ignoreSpace:
         player.eDetails['inventory'].append(item)
         player.eDetails['inventorySpace'] -= 1
+
 def delItemFromInventory(player, item):
     try:
         player.eDetails['inventory'].remove(item)
@@ -63,6 +66,8 @@ def getTypeId(ent):
     return ent.eDetails.get('typeId', 0)
 def getDamage(ent):
     return ent.eDetails.get('damage')
+def getInteractionPause(ent):
+    return ent.eDetails.get('interactPause')
 def getAttackPause(ent):
     return ent.eDetails.get('attackPause')
 def getBlockTypeId(block):
@@ -74,7 +79,7 @@ def getResearchProgress(player):
 def getAllowedBlocks(player):
     return player.eDetails.get('allowedBlocks')
 def getBlockSwimmable(block):
-    return block['swimmable']
+    return block['swimming']
 def getSwimmingSkill(player):
     return player.eDetails.get('swimmingSkill', 0)
 def getSpeed(ent):
@@ -93,5 +98,7 @@ def getDrops(ent):
     return ent.eDetails.get('drops', None)
 def getSkinUpdatePause(ent):
     return ent.eDetails.get('skinChangePause', 1)
-def getGetTimeout(player):
-    return player.eDetails.get('getTimeout', 1)
+def getGetDataTimeout(player):
+    return player.eDetails.get('getDataTimeout', 1)
+def getReach(player):
+    return player.eDetails.get('reach', 1)

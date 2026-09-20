@@ -24,10 +24,6 @@ class Game:
         self.worldSaver = DataSaving(data.worldFilePath)
         self.skinMake = SkinMaker(data.imagesFilePath)
         world = self.worldSaver.loadData()
-        # for row in world:
-        #     for object in row:
-        #         if object['zone'] == None:
-        #             pass
         if world:
             self.world = world
             # self.delOldEntities()
@@ -48,7 +44,7 @@ class Game:
         for zone in data.entitySpawn.keys():
             for i in range(data.maxChestInZone[zone]):
                 self.entitiesPos[self.idCounter] = self.getRandomPos(zone)
-                details = self.getObjectInfo(30)
+                details = self.getObjectInfo(28)
                 details['drops'].append(random.choice(data.chestDrops[zone]))
                 chest = Chest(self.entitiesPos[self.idCounter], details, self.idCounter, self)
                 self.world[chest.y][chest.x]['entities'][self.idCounter] = chest
@@ -209,11 +205,9 @@ class Game:
                 player.actions = []
                 del self.adressToPassword[adress]
         elif adress in self.adressToPassword:
-            if playerMessage == 'getPos' or playerMessage == 'getMap' or playerMessage == 'interact:show':
+            if playerMessage in ['interact:show', 'getMap', 'getPos', 'resetActions']:
                 return self.getPlayerByPassword(self.adressToPassword[adress]).getData(playerMessage, time.perf_counter())
-            elif playerMessage.startswith(tuple(['setSkin:', 'equip:', 'unequip:'])):
-                self.getPlayerByPassword(self.adressToPassword[adress]).noMoveActions.append(playerMessage)
-            elif playerMessage.startswith(tuple(['forward', 'left', 'right', 'turnTo:', 'interact:', 'attack'])):
+            elif playerMessage.startswith(tuple(['forward', 'left', 'right', 'turnTo:', 'interact:', 'attack', 'setSkin:', 'equip:', 'unequip:'])):
                 self.getPlayerByPassword(self.adressToPassword[adress]).actions.append(playerMessage)
         return None
 #     def changeBlock(self, x, y, newId):
@@ -248,7 +242,7 @@ class Game:
         return None
     def setSkin(self, name, skin):
         self.skinMake.createSkin(name, skin)
-    def transformMapForPlayer(self, map):
+    def transformMapForClient(self, map):
         newMap = []
         for y in map:
             xMap = []
@@ -256,10 +250,16 @@ class Game:
                 newPlace = {}
                 newPlace['zone'] = place['zone']
                 newPlace['walkable'] = place['block']['walkable']
-                newPlace['swimmable'] = place['block']['swimmable']
+                newPlace['swimming'] = inventory.getBlockSwimmable(place['block'])
                 newPlace['entities'] = []
                 for e in place['entities'].values():
-                    newPlace['entities'].append(e.__class__.__name__.lower())
+                    eInfo = {}
+                    eInfo['name'] = e.__class__.__name__.lower() + ":" + inventory.getName(e) if inventory.getName(e) != None else e.__class__.__name__.lower()
+                    eInfo['dir'] = inventory.getDir(e)
+                    eInfo['health'] = inventory.getHealth(e)
+                    eInfo['damage'] = inventory.getDamage(e)
+                    eInfo['speed'] = inventory.getSpeed(e)
+                    newPlace['entities'].append(eInfo)
                 xMap.append(newPlace)
             newMap.append(xMap)
         return newMap

@@ -15,12 +15,39 @@ class Player:
         self.offsets = {'north': (0, -1), 'east': (1, 0), 'south': (0, 1), 'west': (-1, 0)}
         self.moveTargetX = float(self.x)
         self.moveTargetY = float(self.y)
-        self.lastActionTime = 0
+        self.lastMoveTime = 0
+        self.lastInteractionTime = 0
         self.lastAttackTime = 0
         self.lastSkinUpdate = 0
-        self.lastGetTime = 0
+        self.lastGetDataTime = 0
         self.actions = []
-        self.noMoveActions = []
+        self.actionRules = [
+            {
+                'timeAttr': 'lastMoveTime',
+                'pauseFn': getWalkPause,
+                'actions': [
+                    ('forward', lambda _: self.forward(), False),
+                    ('left', lambda _: self.turnLeft(), False),
+                    ('right', lambda _: self.turnRight(), False),
+                    ('turnTo:', lambda arg: self.turnTowards(arg), False),
+                    ('equip:', lambda arg: self.equipItem(arg), True),
+                    ('unequip:', lambda arg: self.unequipItem(arg), True),]
+            },{
+                'timeAttr': 'lastInteractionTime',
+                'pauseFn': getInteractionPause,
+                'actions': [
+                    ('interact:', lambda arg: self.interact(arg), True),]
+            },{
+                'timeAttr': 'lastAttackTime',
+                'pauseFn': getAttackPause,
+                'actions': [
+                    ('attack', lambda _: self.attack(), True),]
+            },{
+                'timeAttr': 'lastSkinUpdate',
+                'pauseFn': getSkinUpdatePause,
+                'actions': [
+                    ('setSkin:', lambda arg: self.game.setSkin(self.name, arg), False)]
+            }]
 
     def equipItem(self, action, restoring=False):
         item = action[:action.find('|')]
@@ -80,6 +107,7 @@ class Player:
                     if item:
                         items.append(item)
                 self.game.createGrave(items, (self.moveTargetX, self.moveTargetY))
+                self.actions = []
             self.eDetails = self.game.getObjectInfo(getTypeId(self))
             newPos = data.spawnPos
             self.game.updateEntityMovement((self.moveTargetX, self.moveTargetY), newPos, self.myId)
@@ -87,73 +115,81 @@ class Player:
             self.x = newPos[0]
             self.y = newPos[1]
 
-    def attack(self, currentTime):
-        if currentTime - self.lastAttackTime < getAttackPause(self):
-            return
-        self.lastAttackTime = currentTime
-        entities = list(self.game.world[int(self.y) + self.offsets[self.dir][1]][int(self.x) + self.offsets[self.dir][0]]['entities'].values())
-        if entities:
-            for entity in entities:
-                if not entity.__class__.__name__ == 'Chest':
-                    if entity.__class__.__name__ == 'Enemy' or not self.game.world[int(self.y)][int(self.x)]['zone'] in data.noPVPzones:
-                        itemIds = entity.takeDamage(getDamage(self))
-                        if itemIds:
-                            for id in itemIds:
-                                addItemToInventory(self, self.game.getValue('name', ['typeId', id]))
+    def attack(self):
+        for i in range(getReach(self)):
+            entities = list(self.game.world[int(self.y) + self.offsets[self.dir][1] * (i + 1)][int(self.x) + self.offsets[self.dir][0] * (i + 1)]['entities'].values())
+            if entities:
+                for entity in entities:
+                    if not entity.__class__.__name__ in ['Chest', 'Grave']:
+                        if entity.__class__.__name__ == 'Enemy' or not self.game.world[int(self.y)][int(self.x)]['zone'] in data.noPVPzones:
+                            itemIds = entity.takeDamage(getDamage(self))
+                            if itemIds:
+                                for id in itemIds:
+                                    addItemToInventory(self, self.game.getValue('name', ['typeId', id]))
 
     def interact(self, action):
-        block = self.game.world[int(self.y) + self.offsets[self.dir][1]][int(self.x) + self.offsets[self.dir][0]]['block']
-        if getBlockTypeId(block) == 10:
-            if action.startswith('put:'):
-                self.storeItem(action[4:])
-            elif action.startswith('take:'):
-                self.takeItem(action[5:])
-        elif getBlockTypeId(block) == 12:
-            if action.startswith('put:'):
-                self.addResearchPoints(action[4:])
-        elif getBlockTypeId(block) == 11:
-            if action.startswith('craft:'):
-                self.craft(action[6:])
+        for i in range(getReach(self)):
+            block = self.game.world[int(self.y) + self.offsets[self.dir][1] * (i + 1)][int(self.x) + self.offsets[self.dir][0] * (i + 1)]['block']
+            if getBlockTypeId(block) == 10:
+                if action.startswith('put:'):
+                    self.storeItem(action[4:])
+                elif action.startswith('take:'):
+                    self.takeItem(action[5:])
+                return
+            elif getBlockTypeId(block) == 12:
+                if action.startswith('put:'):
+                    self.addResearchPoints(action[4:])
+                return
+            elif getBlockTypeId(block) == 11:
+                if action.startswith('craft:'):
+                    self.craft(action[6:])
+                return
         if action == 'open':
-            for entity in list(self.game.world[int(self.y) + self.offsets[self.dir][1]][int(self.x) + self.offsets[self.dir][0]]['entities'].values()):
-                if entity.__class__.__name__ == 'Chest':
-                    self.loadInventoryWithItems(entity.openChest())
-                elif entity.__class__.__name__ == 'Grave':
-                    for item in self.game.claimGrave(entity.myId):
-                        addItemToInventory(self, item, ignoreSpace=True)
-
+            for i in range(getReach(self)):
+                entities = self.game.world[int(self.y) + self.offsets[self.dir][1] * (i + 1)][int(self.x) + self.offsets[self.dir][0] * (i + 1)]['entities'].values()
+                for entity in list(entities):
+                    if entity.__class__.__name__ == 'Chest':
+                        self.loadInventoryWithItems(entity.openChest())
+                        return
+                    elif entity.__class__.__name__ == 'Grave':
+                        for item in self.game.claimGrave(entity.myId):
+                            addItemToInventory(self, item, ignoreSpace=True)
+                        return
     def showInteract(self):
-        block = self.game.world[int(self.moveTargetY) + self.offsets[self.dir][1]][int(self.moveTargetX) + self.offsets[self.dir][0]]['block']
-        if getBlockTypeId(block) == 12:
-            recipeDict = {}
-            for item in getResearchProgress(self):
-                if self.game.getValue('research', ['name', item]) != 0:
-                    recipeDict[item] = getResearchProgress(self)[item] / self.game.getValue('research', ['name', item])
-                else:
-                    recipeDict[item] = 1.0
-            return recipeDict
-        elif getBlockTypeId(block) == 11:
-            recipes = []
-            for r in getResearchProgress(self):
-                if self.game.getValue('research', ['name', r]) == getResearchProgress(self)[r] or self.game.getValue('research', ['name', r]) == 0:
-                    recipe = self.game.getValue('recipe', ['name', r])
-                    changedRecipe = {}
-                    for id in recipe:
-                        changedRecipe[self.game.getValue('name', ['typeId', id])] = recipe[id]
-                    recipes.append({r: changedRecipe})
-            return recipes
-        elif getBlockTypeId(block) == 10:
-            return getChestInventory(self)
+        for i in range(getReach(self)):
+            block = self.game.world[int(self.y) + self.offsets[self.dir][1] * (i + 1)][int(self.x) + self.offsets[self.dir][0] * (i + 1)]['block']
+            if getBlockTypeId(block) == 12:
+                recipeDict = {}
+                for item in getResearchProgress(self):
+                    if self.game.getValue('research', ['name', item]) != 0:
+                        recipeDict[item] = getResearchProgress(self)[item] / self.game.getValue('research', ['name', item])
+                    else:
+                        recipeDict[item] = 1.0
+                return recipeDict
+            elif getBlockTypeId(block) == 11:
+                recipes = []
+                for r in getResearchProgress(self):
+                    if self.game.getValue('research', ['name', r]) == getResearchProgress(self)[r] or self.game.getValue('research', ['name', r]) == 0:
+                        recipe = self.game.getValue('recipe', ['name', r])
+                        changedRecipe = {}
+                        for id in recipe:
+                            changedRecipe[self.game.getValue('name', ['typeId', id])] = recipe[id]
+                        recipes.append({r: changedRecipe})
+                return recipes
+            elif getBlockTypeId(block) == 10:
+                return getChestInventory(self)
     def getData(self, message, currentTime):
-        if currentTime - self.lastGetTime > getGetTimeout(self):
-            self.lastGetTime = currentTime
+        if currentTime - self.lastGetDataTime > getGetDataTimeout(self):
+            self.lastGetDataTime = currentTime
             if message == 'getPos':
                 return (self.x, self.y)
             elif message == 'interact:show':
                 return self.showInteract()
             elif message == 'getMap':
                 map = self.game.getMapPart(int(self.x) - getSight(self), int(self.y) - getSight(self), getSight(self) * 2 + 1, getSight(self) * 2 + 1)
-                return self.game.transformMapForPlayer(map)
+                return self.game.transformMapForClient(map)
+            elif message == 'resetActions':
+                self.actions = []
 
     def loadInventoryWithItems(self, ids, haveInvLimits=True):
         for id in ids:
@@ -163,9 +199,6 @@ class Player:
 
     def restorePlayer(self, restore):
         restorePlayerData(self, restore)
-        
-    def turnTowards(self, dir):
-        self.dir = dir
 
     def canWalkOn(self, object):
         noEntities = True
@@ -180,6 +213,9 @@ class Player:
             else:
                 return True
         return False
+
+    def turnTowards(self, dir):
+        self.dir = dir
 
     def forward(self):        
         targetTileX = int(self.x + self.offsets[self.dir][0])
@@ -197,6 +233,8 @@ class Player:
     def updatePhysics(self, deltaTime, currentTime):
         if not self.isMoving:
             return
+        if (abs(self.moveTargetX - self.x) < 0.5 and self.x != self.moveTargetX) or (abs(self.moveTargetY - self.y) < 0.5 and self.y != self.moveTargetY):
+            self.game.updateEntityMovement((self.moveTargetX - self.offsets[self.dir][0], self.moveTargetY - self.offsets[self.dir][1]), (self.moveTargetX, self.moveTargetY), self.myId)
         step = getSpeed(self) * deltaTime
         if self.x < self.moveTargetX:
             self.x = min(self.moveTargetX, self.x + step)
@@ -210,7 +248,7 @@ class Player:
 
         if self.x == self.moveTargetX and self.y == self.moveTargetY:
             self.isMoving = False
-            self.lastActionTime = currentTime
+            self.lastMoveTime = currentTime
 
     def executeStep(self):
         oldX, oldY = int(self.x), int(self.y)
@@ -219,50 +257,24 @@ class Player:
         self.moveTargetX = float(newX)
         self.moveTargetY = float(newY)
         self.isMoving = True
-        self.game.updateEntityMovement((oldX, oldY), (newX, newY), self.myId)
 
     def doAction(self, currentTime):
-        if currentTime - self.lastActionTime < getWalkPause(self):
+        if self.isMoving or not self.actions:
             return
-        self.noMoveAction(currentTime)
-        if not self.isMoving:
-            self.moveAction(currentTime)
-    
+        act = self.actions[0]
+        for category in self.actionRules:
+            attrName = category['timeAttr']
+            if currentTime - getattr(self, attrName) > category['pauseFn'](self):
+                for action, handler, shouldSave in category['actions']:
+                    if act.startswith(action):
+                        arg = act[len(action):]
+                        handler(arg)
+                        setattr(self, attrName, currentTime)
+                        self.actions.pop(0)
+                        if shouldSave:
+                            self.game.savePlayer(self)
+                        return
+
     def setSkinT(self, transparency):
         self.game.setSkinTransparency(self.name, transparency)
         self.lastSkinUpdate += 5
-
-    def noMoveAction(self, currentTime):
-        if self.noMoveActions:
-            act = self.noMoveActions.pop(0)
-            if act.startswith('setSkin:'):
-                if currentTime - self.lastSkinUpdate > getSkinUpdatePause(self):
-                    self.lastSkinUpdate = currentTime
-                    self.game.setSkin(self.name, act[8:])
-            elif act.startswith('equip:'):
-                self.equipItem(act[6:])
-                self.game.savePlayer(self)
-                self.lastActionTime = currentTime
-            elif act.startswith('unequip:'):
-                self.unequipItem(act[8:])
-                self.game.savePlayer(self)
-                self.lastActionTime = currentTime
-
-    def moveAction(self, currentTime):
-        if self.actions:
-            act = self.actions.pop(0)
-            if act == 'forward':
-                self.forward()
-            elif act == 'left':
-                self.turnLeft()
-            elif act == 'right':
-                self.turnRight()
-            elif act.startswith('turnTo:'):
-                self.turnTowards(act[6:])
-            elif act.startswith('interact:'):
-                self.interact(act[9:])
-                self.game.savePlayer(self)
-            elif act == 'attack':
-                self.attack(currentTime)
-                self.game.savePlayer(self)
-            self.lastActionTime = currentTime

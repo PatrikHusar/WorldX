@@ -1,0 +1,90 @@
+This is documentation of functions you can use:
+<<<Not every detail is documented here, it's
+for the reason of revealing some stuff in game>>>
+
+1. is_pressed(key):
+    returns True if key is pressed on your
+    keyboard and False if key isn't pressed
+    example: 
+        if is_pressed('w') == True:
+            forward()
+
+2. turn_right():
+    turns your player right
+
+3. turn_left():
+    turns your player left
+
+4. forward():
+    moves your player forward
+
+5. turn_towards(direction):
+    turns your player in specific direction.
+    directions: up - 'north'
+                down - 'south'
+                left - 'west'
+                right - 'east'
+    example:
+        turn_towards('east')
+
+6. get_position():
+    returns your player's current position in whole map
+
+7. interact(action):
+    There are more parameters you can
+    write into this function and
+    here is every parameter that you can use explained.
+
+    A. interact('show'):
+        returns information about block.
+        Works on just some blocks,
+        explore your world to find out more!
+
+    B. interact('put', item_name):
+        puts item into chests or other
+        blocks from your inventory
+
+    C. interact('take', item_name):
+        takes item from chest to your inventory
+
+    D. interact('craft', final_crafting_item_name):
+        takes all needed resources from
+        your inventory and crafts item
+
+    E. interact('open'):
+        opens treasures or other stuff
+
+8. attack():
+    attacks enemies in your range.
+
+9. equip(item_name, body_slot_name):
+    equips an equippable item from your
+    inventory into your equipment slots
+
+10. unequip(body_slot_name):
+    unequips item at the slot and
+    puts it into your inventory
+
+11. set_skin(skin_chars):
+    sets skin of your player based on chars
+    you enter(uses ASCII table to
+    convert chars into colors)
+
+12. stop_actions():
+    clears all actions.
+    For example if you press
+    forward 5 times in a row,
+    it saves all 5 presses in a buffer and
+    they execute one after each other but
+    if you don't want to go forward anymore
+    but in your buffer are still actions,
+    you can clear all actions with this
+    function to clear your buffer
+
+13. get_map():
+    returns 2D field of map around the player.
+    (Size of field is possible to
+    enlarge by having bigger sight)
+    Explore this function in your code to
+    know the structure of this 2D field and
+    you can use this function to create autofinding bots.

@@ -95,8 +95,11 @@ def is_pressed(klaves):
         return True
     return False
 
-def interact(action):
-    return client.sendMessage(f'interact:{action}')
+def interact(action, item=None):
+    if item == None:
+        return client.sendMessage(f'interact:{action}')
+    else:
+        return client.sendMessage(f'interact:{action}:{item}')
 
 def attack():
     client.sendMessage('attack')
@@ -107,8 +110,11 @@ def equip(item, slot):
 def unequip(slot):
     client.sendMessage(f'unequip:{slot}')
 
-def setSkin(asciiSkin):
+def set_skin(asciiSkin):
     client.sendMessage(f'setSkin:{asciiSkin}')
 
-def getMap():
+def get_map():
     return client.sendMessage('getMap')
+
+def stop_actions():
+    client.sendMessage('resetActions')
