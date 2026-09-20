@@ -24,10 +24,6 @@ class Game:
         self.worldSaver = DataSaving(data.worldFilePath)
         self.skinMake = SkinMaker(data.imagesFilePath)
         world = self.worldSaver.loadData()
-        # for row in world:
-        #     for object in row:
-        #         if object['zone'] == None:
-        #             pass
         if world:
             self.world = world
             # self.delOldEntities()
@@ -254,7 +250,7 @@ class Game:
                 newPlace = {}
                 newPlace['zone'] = place['zone']
                 newPlace['walkable'] = place['block']['walkable']
-                newPlace['swimmable'] = place['block']['swimmable']
+                newPlace['swimming'] = inventory.getBlockSwimmable(place['block'])
                 newPlace['entities'] = []
                 for e in place['entities'].values():
                     eInfo = {}

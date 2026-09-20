@@ -79,7 +79,7 @@ def getResearchProgress(player):
 def getAllowedBlocks(player):
     return player.eDetails.get('allowedBlocks')
 def getBlockSwimmable(block):
-    return block['swimmable']
+    return block['swimming']
 def getSwimmingSkill(player):
     return player.eDetails.get('swimmingSkill', 0)
 def getSpeed(ent):

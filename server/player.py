@@ -233,6 +233,8 @@ class Player:
     def updatePhysics(self, deltaTime, currentTime):
         if not self.isMoving:
             return
+        if (abs(self.moveTargetX - self.x) < 0.5 and self.x != self.moveTargetX) or (abs(self.moveTargetY - self.y) < 0.5 and self.y != self.moveTargetY):
+            self.game.updateEntityMovement((self.moveTargetX - self.offsets[self.dir][0], self.moveTargetY - self.offsets[self.dir][1]), (self.moveTargetX, self.moveTargetY), self.myId)
         step = getSpeed(self) * deltaTime
         if self.x < self.moveTargetX:
             self.x = min(self.moveTargetX, self.x + step)
@@ -255,7 +257,6 @@ class Player:
         self.moveTargetX = float(newX)
         self.moveTargetY = float(newY)
         self.isMoving = True
-        self.game.updateEntityMovement((oldX, oldY), (newX, newY), self.myId)
 
     def doAction(self, currentTime):
         if self.isMoving or not self.actions:
