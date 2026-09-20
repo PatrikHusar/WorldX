@@ -1,6 +1,6 @@
 from client import is_pressed, turn_right, turn_left, forward, turn_towards, get_position, interact, attack, equip, unequip, set_skin, get_map, stop_actions
 
-set_skin('CCCfC\nBBkBB\n.L TS')
+set_skin('a')
 
 while True:
     if is_pressed('w'):
@@ -14,23 +14,19 @@ while True:
     elif is_pressed(' '):
         attack()
     elif is_pressed('q'):
-        interact('put:Sylvanite')
+        interact('put:')
     elif is_pressed('z'):
         print(interact('show'))
     elif is_pressed('x'):
-        interact('take:Sylvanite')
+        interact('take:')
     elif is_pressed('c'):
-        interact('put:recipe_light_boots_tier_1')
+        interact('put:')
     elif is_pressed('r'):
-        interact('craft:light_boots_tier_1')
+        interact('craft:')
     elif is_pressed('f'):
-        equip('light_boots_tier_1', 'feet')
+        equip('', '')
     elif is_pressed('g'):
-        unequip('feet')
-    elif is_pressed('p'):
-        set_skin('CDdCvfC\nBBk')
-    elif is_pressed('o'):
-        set_skin('SLCfC\nBLkBa')
+        unequip('')
     elif is_pressed('m'):
         print(get_map())
     elif is_pressed('s'):
