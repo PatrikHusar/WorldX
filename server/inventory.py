@@ -51,7 +51,8 @@ def setInventory(player, inv):
         addItemToInventory(player, item, ignoreSpace=True)
 def setResearchProgress(player, res):
     player.eDetails['researchProgress'] = res
-
+def setMaxHealth(ent, hp):
+    ent.eDetails['maxHealth'] = hp
 
 def getInventory(ent):
     return ent.eDetails.get('inventory', [])
@@ -102,3 +103,7 @@ def getGetDataTimeout(player):
     return player.eDetails.get('getDataTimeout', 1)
 def getReach(player):
     return player.eDetails.get('reach', 1)
+def getRegeneration(player):
+    return player.eDetails.get('regeneration', 0)
+def getMaxHealth(ent):
+    return ent.eDetails.get('maxHealth')

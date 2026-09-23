@@ -5,6 +5,7 @@ class Player:
     def __init__(self, pos, player, id, game, password):
         self.x = float(pos[0])
         self.y = float(pos[1])
+        self.oldX, self.oldY = self.x, self.y
         self.dir = 'north'
         self.myId = id
         self.isMoving = False
@@ -15,11 +16,13 @@ class Player:
         self.offsets = {'north': (0, -1), 'east': (1, 0), 'south': (0, 1), 'west': (-1, 0)}
         self.moveTargetX = float(self.x)
         self.moveTargetY = float(self.y)
+        self.changedPos = False
         self.lastMoveTime = 0
         self.lastInteractionTime = 0
         self.lastAttackTime = 0
         self.lastSkinUpdate = 0
         self.lastGetDataTime = 0
+        self.lastRegenTime = 0
         self.actions = []
         self.actionRules = [
             {
@@ -101,19 +104,25 @@ class Player:
     def takeDamage(self, dmg):
         setHealth(self, getHealth(self) - dmg)
         if getHealth(self) <= 0.0:
+            if self.changedPos == True:
+                oldPos = (int(self.moveTargetX), int(self.moveTargetY))
+            else:
+                oldPos = (int(self.oldX), int(self.oldY))
+            self.changedPos = False
             if len(getInventory(self)) > 0:
                 items = getInventory(self)
                 for item in getEquipped(self).values():
                     if item:
                         items.append(item)
-                self.game.createGrave(items, (self.moveTargetX, self.moveTargetY))
+                self.game.createGrave(items, oldPos)
                 self.actions = []
             self.eDetails = self.game.getObjectInfo(getTypeId(self))
             newPos = data.spawnPos
-            self.game.updateEntityMovement((self.moveTargetX, self.moveTargetY), newPos, self.myId)
+            self.game.updateEntityMovement(oldPos, newPos, self.myId)
             self.isMoving = False
             self.x = newPos[0]
             self.y = newPos[1]
+            self.oldX, self.oldY = self.x, self.y
 
     def attack(self):
         for i in range(getReach(self)):
@@ -200,13 +209,13 @@ class Player:
     def restorePlayer(self, restore):
         restorePlayerData(self, restore)
 
-    def canWalkOn(self, object):
+    def canWalkOn(self, object, checkEntities=True):
         noEntities = True
         for entity in object['entities'].values():
             if not entity.__class__.__name__ == 'Player':
                 noEntities = False
                 break
-        if getBlockTypeId(object['block']) in getAllowedBlocks(self) and noEntities == True:
+        if getBlockTypeId(object['block']) in getAllowedBlocks(self) and (noEntities == True or checkEntities == False):
             if not getBlockSwimmable(object['block']) == False:
                 if getSwimmingSkill(self) >= getBlockSwimmable(object['block']):
                     return True
@@ -234,6 +243,7 @@ class Player:
         if not self.isMoving:
             return
         if (abs(self.moveTargetX - self.x) < 0.5 and self.x != self.moveTargetX) or (abs(self.moveTargetY - self.y) < 0.5 and self.y != self.moveTargetY):
+            self.changedPos = True
             self.game.updateEntityMovement((self.moveTargetX - self.offsets[self.dir][0], self.moveTargetY - self.offsets[self.dir][1]), (self.moveTargetX, self.moveTargetY), self.myId)
         step = getSpeed(self) * deltaTime
         if self.x < self.moveTargetX:
@@ -249,16 +259,28 @@ class Player:
         if self.x == self.moveTargetX and self.y == self.moveTargetY:
             self.isMoving = False
             self.lastMoveTime = currentTime
+            self.oldX, self.oldY = self.x, self.y
 
     def executeStep(self):
-        oldX, oldY = int(self.x), int(self.y)
-        newX = oldX + self.offsets[self.dir][0]
-        newY = oldY + self.offsets[self.dir][1]
+        self.oldX, self.oldY = int(self.x), int(self.y)
+        newX = self.oldX + self.offsets[self.dir][0]
+        newY = self.oldY + self.offsets[self.dir][1]
         self.moveTargetX = float(newX)
         self.moveTargetY = float(newY)
         self.isMoving = True
+        self.changedPos = False
+
+    def defaultControl(self, currentTime):
+        if currentTime - self.lastRegenTime > 2:
+            self.lastRegenTime = currentTime
+            setHealth(self, getHealth(self) + getRegeneration(self))
+            if getHealth(self) > getMaxHealth(self):
+                setHealth(self, getMaxHealth(self))
+            if self.canWalkOn(self.game.world[int(self.y)][int(self.x)], False) == False:
+                setHealth(self, getHealth(self) - getRegeneration(self) - 8)
 
     def doAction(self, currentTime):
+        self.defaultControl(currentTime)
         if self.isMoving or not self.actions:
             return
         act = self.actions[0]

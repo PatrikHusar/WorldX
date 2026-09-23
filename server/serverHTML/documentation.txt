@@ -1,6 +1,5 @@
 This is documentation of functions you can use:
-<<<Not every detail is documented here, it's
-for the reason of revealing some stuff in game>>>
+<<<Not every detail is documented here because it can reveal some stuff in game>>>
 
 1. is_pressed(key):
     returns True if key is pressed on your
