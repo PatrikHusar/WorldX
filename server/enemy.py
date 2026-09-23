@@ -6,6 +6,7 @@ class Enemy:
     def __init__(self, pos, entity, id, game):
         self.x = float(pos[0])
         self.y = float(pos[1])
+        self.oldX, self.oldY = self.x, self.y
         self.myId = id
         self.game = game
         self.eDetails = entity
@@ -18,12 +19,14 @@ class Enemy:
         self.lastAttackTime = 0
         self.offsets = {'north': (0, -1), 'east': (1, 0), 'south': (0, 1), 'west': (-1, 0)}
         self.startingPause = random.uniform(0.001, 1.001)
+        self.changedPos = False
 
     def updatePhysics(self, deltaTime, currentTime):
         if not self.isMoving:
             return
         if (abs(self.moveTargetX - self.x) < 0.5 and self.x != self.moveTargetX) or (abs(self.moveTargetY - self.y) < 0.5 and self.y != self.moveTargetY):
             self.game.updateEntityMovement((self.moveTargetX - self.offsets[self.dir][0], self.moveTargetY - self.offsets[self.dir][1]), (self.moveTargetX, self.moveTargetY), self.myId)
+            self.changedPos = True
         step = inventory.getSpeed(self) * deltaTime
         if self.x < self.moveTargetX:
             self.x = min(self.moveTargetX, self.x + step)
@@ -38,16 +41,24 @@ class Enemy:
         if self.x == self.moveTargetX and self.y == self.moveTargetY:
             self.isMoving = False
             self.lastActionTime = currentTime
+            self.oldX, self.oldY = self.x, self.y
 
     def takeDamage(self, dmg):
         inventory.setHealth(self, inventory.getHealth(self) - dmg)
         if inventory.getHealth(self) <= 0.0:
+            if self.changedPos == True:
+                oldPos = (self.moveTargetX, self.moveTargetY)
+            else:
+                oldPos = (int(self.oldX), int(self.oldY))
+            self.changedPos = False
             self.eDetails = self.game.getObjectInfo(inventory.getTypeId(self))
             newPos = self.game.getRandomPos(self.game.world[int(self.y)][int(self.x)]['zone'])
-            self.game.updateEntityMovement((self.moveTargetX, self.moveTargetY), newPos, self.myId)
+            self.game.updateEntityMovement(oldPos, newPos, self.myId)
             self.isMoving = False
             self.x = newPos[0]
             self.y = newPos[1]
+            self.oldX, self.oldY = self.x, self.y
+
             return inventory.getDrops(self)
         else:
             return None
@@ -156,10 +167,11 @@ class Enemy:
         return None
 
     def executeStep(self, moveChoice):
-        oldX, oldY = int(self.x), int(self.y)
-        newX = oldX + self.offsets[moveChoice][0]
-        newY = oldY + self.offsets[moveChoice][1]
+        self.oldX, self.oldY = int(self.x), int(self.y)
+        newX = self.oldX + self.offsets[moveChoice][0]
+        newY = self.oldY + self.offsets[moveChoice][1]
         self.moveTargetX = float(newX)
         self.moveTargetY = float(newY)
         self.dir = moveChoice
         self.isMoving = True
+        self.changedPos = False
