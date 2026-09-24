@@ -71,7 +71,10 @@ class Client:
         self.__running = False
         self.__client.close()
 
-client = Client(("127.0.0.1", 5001))
+
+def connect_to(addr):
+    global client
+    client = Client(addr)
 
 def forward():
     client.sendMessage("forward")
