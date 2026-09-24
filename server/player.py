@@ -123,6 +123,7 @@ class Player:
             self.x = newPos[0]
             self.y = newPos[1]
             self.oldX, self.oldY = self.x, self.y
+            self.game.savePlayer(self)
 
     def attack(self):
         for i in range(getReach(self)):
@@ -200,11 +201,11 @@ class Player:
             elif message == 'resetActions':
                 self.actions = []
 
-    def loadInventoryWithItems(self, ids, haveInvLimits=True):
+    def loadInventoryWithItems(self, ids, ignoreInvSpace=False):
         for id in ids:
             itemName = self.game.getValue('name', ['typeId', id])
             if itemName:
-                addItemToInventory(self, itemName, haveInvLimits)
+                addItemToInventory(self, itemName, ignoreInvSpace)
 
     def restorePlayer(self, restore):
         restorePlayerData(self, restore)
