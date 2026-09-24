@@ -19,5 +19,6 @@ How to setup your client:
 How to setup your server:
     - download server zip folder from releases.
     - unzip zip folder into folder on your computer
-    - open terminal inside unzipped folder
-    - type command: pip install -r libraryRequirements.txt
+    - run file run.sh to download necessary libraries and start server.
+
+    info: you can modify host adress and port in main.py file

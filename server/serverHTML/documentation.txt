@@ -87,3 +87,6 @@ This is documentation of functions you can use:
     Explore this function in your code to
     know the structure of this 2D field and
     you can use this function to create autofinding bots.
+
+Other Info:
+    - PVP is disabled in forest

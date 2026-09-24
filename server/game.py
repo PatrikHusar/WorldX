@@ -15,7 +15,7 @@ from skinMaker import SkinMaker
 import inventory
 
 class Game:
-    def __init__(self, port):
+    def __init__(self, TCPAddr, webAddr):
         self.world = []
         self.zonePositions = {}
         self.entitiesPos = {}
@@ -32,8 +32,8 @@ class Game:
             self.worldSaver.saveData(self.world)
         self.playerSaver = DataSaving(data.playersDataFilePath)
         self.restorePlayers()
-        self.TCPserver = Server(("0.0.0.0", 5001), self.processClientData)
-        self.webServer = ServerHTML(host="0.0.0.0", port=port, game=self)
+        self.TCPserver = Server(webAddr, self.processClientData)
+        self.webServer = ServerHTML(host=TCPAddr[0], port=TCPAddr[1], game=self)
         self.initZonePositions()
         self.spawnEnemies()
         self.spawnChests()

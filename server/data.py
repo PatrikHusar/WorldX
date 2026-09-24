@@ -9,7 +9,6 @@ dirs = ['north', 'east', 'south', 'west']
 spawnableBlockIds = [0, 17, 20, 6, 13]
 noPVPzones = ['forest']
 spawnPos = (50, 75)
-spawnPos = (141, 16)
 researchValue = 10
 maxEnemiesInZone = {
     'forest': 35,

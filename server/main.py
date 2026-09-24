@@ -1,5 +1,7 @@
 import os
 import game
 
-# game = game.Game(int(os.environ.get("PORT", 5000)))
-game = game.Game(5000)
+webServerAddr = ("0.0.0.0", 5000)
+TCPCommAddr = ("0.0.0.0", 5001)
+
+game = game.Game(TCPCommAddr, webServerAddr)
