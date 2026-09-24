@@ -20,4 +20,4 @@ How to setup your server:
 - unzip zip folder into folder on your computer
 - run file `run.sh` to download necessary libraries and start server.
 
-*Info: you can modify host adress and port in `main.py` file.*
+  *Info: you can modify host adress and port in `main.py` file.*
