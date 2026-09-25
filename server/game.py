@@ -205,7 +205,7 @@ class Game:
                 player.actions = []
                 del self.adressToPassword[adress]
         elif adress in self.adressToPassword:
-            if playerMessage in ['interact:show', 'getMap', 'getPos', 'resetActions']:
+            if playerMessage in ['interact:show', 'getMap', 'getPos', 'resetActions', 'getInv']:
                 return self.getPlayerByPassword(self.adressToPassword[adress]).getData(playerMessage, time.perf_counter())
             elif playerMessage.startswith(tuple(['forward', 'left', 'right', 'turnTo:', 'interact:', 'attack', 'setSkin:', 'equip:', 'unequip:'])):
                 self.getPlayerByPassword(self.adressToPassword[adress]).actions.append(playerMessage)

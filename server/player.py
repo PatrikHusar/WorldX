@@ -200,6 +200,8 @@ class Player:
                 return self.game.transformMapForClient(map)
             elif message == 'resetActions':
                 self.actions = []
+            elif message == 'getInv':
+                return getInventory(self)
 
     def loadInventoryWithItems(self, ids, ignoreInvSpace=False):
         for id in ids:
