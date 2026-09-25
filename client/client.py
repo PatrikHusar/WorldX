@@ -121,3 +121,6 @@ def get_map():
 
 def stop_actions():
     client.sendMessage('resetActions')
+
+def get_inventory():
+    return client.sendMessage('getInv')

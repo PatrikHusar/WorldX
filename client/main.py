@@ -1,4 +1,4 @@
-from client import is_pressed, turn_right, turn_left, forward, turn_towards, get_position, interact, attack, equip, unequip, set_skin, get_map, stop_actions, connect_to
+from client import is_pressed, turn_right, turn_left, forward, turn_towards, get_position, interact, attack, equip, unequip, set_skin, get_map, stop_actions, connect_to, get_inventory
 
 connect_to(("127.0.0.1", 5001))
 
