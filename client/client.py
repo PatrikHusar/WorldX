@@ -124,3 +124,6 @@ def stop_actions():
 
 def get_inventory():
     return client.sendMessage('getInv')
+
+def get_dir():
+    return client.sendMessage('getDir')

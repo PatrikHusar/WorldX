@@ -202,6 +202,8 @@ class Player:
                 self.actions = []
             elif message == 'getInv':
                 return getInventory(self)
+            elif message == 'getDir':
+                return getDir(self)
 
     def loadInventoryWithItems(self, ids, ignoreInvSpace=False):
         for id in ids:

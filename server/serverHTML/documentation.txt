@@ -1,5 +1,4 @@
 This is documentation of functions you can use:
-<<<Not every detail is documented here because it can reveal some stuff in game>>>
 
 1. is_pressed(key):
     returns True if key is pressed on your
@@ -88,5 +87,48 @@ This is documentation of functions you can use:
     know the structure of this 2D field and
     you can use this function to create autofinding bots.
 
+14. get_inventory():
+    returns list of items that are in your inventory
+
+15. get_dir():
+    returns direction you are currently facing.
+    can be: ['north', 'south', 'east', 'west']
+
 Other Info:
-    - PVP is disabled in forest
+    - PVP is disabled in forest zone
+    - Default inventory space is max 10 items
+
+Interactive Block Info:
+    Old Computer:
+        name: research station
+        info:
+          for researching items, 
+          bring your recipe items here, 
+          put them in and after fully
+          researching item you can go craft it.
+          How to know research state:
+            use interact('show') to get research info,
+            you will see all researching items and next to them,
+            you'll see research "number" and it means "number"/1.0,
+            and when the number equals to 1.0 you have fully
+            researched item and you can craft it.
+
+    Crafting Bench:
+        name: crafting table
+        info:
+          for crafting items you need to have all
+          ingredients required in your inventory.
+          then use interact('craft', 'crafting_item')
+          to craft it.
+          How to get crafting ingredients list:
+            use interact('show') to show
+            all craftable items and their
+            crafting ingredients next to them.
+
+    Chest:
+        name: chest
+        info:
+          infinite storage for storing your items.
+          you can put item in using interact('put', 'item_name').
+          or you can take item using interact('take', 'item_name').
+          to show chest inventory use interact('show').
