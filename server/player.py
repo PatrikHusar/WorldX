@@ -21,7 +21,7 @@ class Player:
         self.lastInteractionTime = 0
         self.lastAttackTime = 0
         self.lastSkinUpdate = 0
-        self.lastGetDataTime = 0
+        self.lastGetDataTimes = [0, 0, 0, 0, 0, 0]
         self.lastRegenTime = 0
         self.actions = []
         self.actionRules = [
@@ -73,9 +73,11 @@ class Player:
     def storeItem(self, item):
         if item in getInventory(self):
             storeItemToChest(self, item)
+        self.game.savePlayer(self)
     def takeItem(self, item):
         if item in getChestInventory(self):
             takeItemFromChest(self, item)
+        self.game.savePlayer(self)
     def addResearchPoints(self, recipeItem):
         if recipeItem in getInventory(self) and recipeItem.startswith('recipe_'):
             item = recipeItem[7:]
@@ -87,6 +89,7 @@ class Player:
             researchMax = self.game.getValue('research', ['name', item])
             if getResearchProgress(self)[item] >= researchMax:
                 getResearchProgress(self)[item] = researchMax
+            self.game.savePlayer(self)
     def craft(self, item):
         if item in getResearchProgress(self) and getResearchProgress(self)[item] >= self.game.getValue('research', ['name', item]):
             craftRecipe = self.game.getValue('recipe', ['name', item])
@@ -96,6 +99,7 @@ class Player:
                     for i in range(craftRecipe[id]):
                         delItemFromInventory(self, name)
                 addItemToInventory(self, item, True)
+            self.game.savePlayer(self)
     def ableToCraft(self, recipe):
         for itemId in recipe:
             if recipe[itemId] > getInventory(self).count(self.game.getValue('name', ['typeId', itemId])):
@@ -164,6 +168,7 @@ class Player:
                     elif entity.__class__.__name__ == 'Grave':
                         for item in self.game.claimGrave(entity.myId):
                             addItemToInventory(self, item, ignoreSpace=True)
+                        self.game.savePlayer(self)
                         return
     def showInteract(self):
         for i in range(getReach(self)):
@@ -189,20 +194,26 @@ class Player:
             elif getBlockTypeId(block) == 10:
                 return getChestInventory(self)
     def getData(self, message, currentTime):
-        if currentTime - self.lastGetDataTime > getGetDataTimeout(self):
-            self.lastGetDataTime = currentTime
-            if message == 'getPos':
+        if currentTime - self.lastGetDataTimes > getGetDataTimeout(self):
+            self.lastGetDataTimes = currentTime
+            if message == 'getPos' and currentTime - self.lastGetDataTimes[0] > getGetDataTimeout(self):
+                self.lastGetDataTimes[0] = currentTime
                 return (self.x, self.y)
-            elif message == 'interact:show':
+            elif message == 'interact:show' and currentTime - self.lastGetDataTimes[1] > getGetDataTimeout(self):
+                self.lastGetDataTimes[1] = currentTime
                 return self.showInteract()
-            elif message == 'getMap':
+            elif message == 'getMap' and currentTime - self.lastGetDataTimes[2] > getGetDataTimeout(self):
+                self.lastGetDataTimes[2] = currentTime
                 map = self.game.getMapPart(int(self.x) - getSight(self), int(self.y) - getSight(self), getSight(self) * 2 + 1, getSight(self) * 2 + 1)
                 return self.game.transformMapForClient(map)
-            elif message == 'resetActions':
+            elif message == 'resetActions' and currentTime - self.lastGetDataTimes[3] > getGetDataTimeout(self):
+                self.lastGetDataTimes[3] = currentTime
                 self.actions = []
-            elif message == 'getInv':
+            elif message == 'getInv' and currentTime - self.lastGetDataTimes[4] > getGetDataTimeout(self):
+                self.lastGetDataTimes[4] = currentTime
                 return getInventory(self)
-            elif message == 'getDir':
+            elif message == 'getDir' and currentTime - self.lastGetDataTimes[5] > getGetDataTimeout(self):
+                self.lastGetDataTimes[5] = currentTime
                 return getDir(self)
 
     def loadInventoryWithItems(self, ids, ignoreInvSpace=False):
@@ -210,6 +221,7 @@ class Player:
             itemName = self.game.getValue('name', ['typeId', id])
             if itemName:
                 addItemToInventory(self, itemName, ignoreInvSpace)
+        self.game.savePlayer(self)
 
     def restorePlayer(self, restore):
         restorePlayerData(self, restore)

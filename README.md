@@ -15,6 +15,8 @@ How to setup your client:
 - connect to server
 - have fun playing :)
 
+  *Warning: Keep your Account ID private to protect your account.*
+
 How to setup your server:
 - download server zip folder from releases.
 - unzip zip folder into folder on your computer
